@@ -4,9 +4,25 @@ require_once __DIR__ . "/../bootstrap.php";
 $db = (new Database())->connect();
 new Attendance($db);
 
-$attendances = Attendance::query()->where("window", "afternoon_in")->get();
+// $attendances = Attendance::query()->where("window", "afternoon_in")->first();
 
-print_r($attendances);
+// print_r($attendances);
+$newAttendanceData = [
+    "employee_id" => 123,
+    "created_at" => date("Y-m-d H:i:s"),
+    "updated_at" => date("Y-m-d H:i:s"),
+    "window" => "IN",       // or "OUT"
+    "extra_column" => "ignore this"  // ❌ will be ignored because not fillable
+];
+
+try {
+    // Create a new attendance record
+    $attendanceId = Attendance::create($newAttendanceData);
+
+    echo "New attendance record inserted with ID: $attendanceId";
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
 // $dbconn = new Database();
 
 // $model = new Model($dbconn->connect());
