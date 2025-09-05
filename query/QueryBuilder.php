@@ -151,28 +151,63 @@ class QueryBuilder {
         return $this->db->lastInsertId();
     }
 
-    public function update(array $data) {
+    // public function update(array $data) {
+    //     if (empty($this->conditions)) {
+    //         throw new Exception("Update requires a WHERE condition.");
+    //     }
+
+    //     $set = [];
+    //     foreach ($data as $col => $val) {
+    //         $set[] = "$col = ?";
+    //         $this->params[] = $val;
+    //     }
+
+    //     $sql = "UPDATE {$this->table} SET " . implode(", ", $set);
+    //     if ($this->conditions) {
+    //         $sql .= " WHERE " . $this->compileConditions();
+    //     }
+
+    //     $stmt = $this->db->prepare($sql);
+    //     $success = $stmt->execute($this->params);
+
+    //     $this->resetQuery();
+    //     return $success;
+    // }
+
+    public function update(array $data)
+    {
         if (empty($this->conditions)) {
             throw new Exception("Update requires a WHERE condition.");
         }
 
+        // Separate set parameters
         $set = [];
+        $setParams = [];
         foreach ($data as $col => $val) {
             $set[] = "$col = ?";
-            $this->params[] = $val;
+            $setParams[] = $val;
         }
 
+        // Build SQL
         $sql = "UPDATE {$this->table} SET " . implode(", ", $set);
         if ($this->conditions) {
             $sql .= " WHERE " . $this->compileConditions();
         }
 
         $stmt = $this->db->prepare($sql);
-        $success = $stmt->execute($this->params);
+
+        // Merge SET values first, then WHERE values
+        $allParams = array_merge($setParams, $this->params);
+        $success = $stmt->execute($allParams);
 
         $this->resetQuery();
-        return $success;
+
+        // Return number of affected rows instead of just true
+        return $stmt->rowCount();
     }
+
+
+
 
     public function delete() {
         if (empty($this->conditions)) {

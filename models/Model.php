@@ -1,121 +1,40 @@
 <?php
 require_once __DIR__ . '/../query/QueryBuilder.php';
 
-// class Model extends QueryBuilder {
-//     protected $table;
+/**
+ * Base Model class for Laravel-style ORM
+ */
+class Model extends QueryBuilder
+{
+    /**
+     * Table associated with the model
+     *
+     * @var string
+     */
+    protected $table;
 
-//     protected static $connection; 
+    /**
+     * Mass assignable fields
+     *
+     * @var array
+     */
+    protected $fillable = [];
 
-//     public function __construct(PDO $dbconn) {
-//         parent::__construct($dbconn);
-//         static::$connection = $dbconn;
-//     }
+    /**
+     * Shared PDO connection for all models
+     *
+     * @var PDO|null
+     */
+    protected static $pdo = null;
 
-//     public static function tableName() {
-//         return (new static(static::$connection))->table;
-//     }
-
-//     public static function query() {
-//         return new static(static::$connection);
-//     }
-
-//     public static function all() {
-//         return static::query()->table(static::tableName())->get();
-//     }
-
-//     public static function find($id) {
-//         return static::query()->table(static::tableName())->where("id", $id)->first();
-//     }
-// }
-
-// class Model extends QueryBuilder {
-//     protected $table;               // set this in each child model
-//     protected static $pdo = null;   // shared PDO for all models
-
-//     public function __construct(?PDO $dbconn = null) {
-//         if ($dbconn instanceof PDO) {
-//             static::$pdo = $dbconn;
-//             parent::__construct($dbconn);
-//             return;
-//         }
-
-//         if (!static::$pdo) {
-//             throw new Exception("No PDO connection set. Call Model::setConnection(\$pdo) first.");
-//         }
-
-//         parent::__construct(static::$pdo);
-//     }
-
-
-//     // One-time bootstrap from your app (e.g., in bootstrap.php)
-//     public static function setConnection(PDO $pdo): void {
-//         static::$pdo = $pdo;
-//     }
-
-//     // Returns the table name defined by the child model
-//     public static function tableName(): string {
-//         $instance = new static(static::$pdo);
-//         return $instance->table;
-//     }
-
-//     // Start a new query builder for this model
-//     public static function query(): self {
-//         return (new static(static::$pdo))->table(static::tableName());
-//     }
-
-//     // Like Laravel: immediately fetch all rows (array)
-//     public static function all(): array {
-//         return static::query()->get();
-//     }
-
-//     // Find one row by id (or null)
-//     public static function find($id) {
-//         return static::query()->where("id", $id)->first();
-//     }
-// }
-
-// class Model extends QueryBuilder {
-//     protected static $db;
-//     protected $table;
-//     protected $fillable = []; // 👈 default empty
-
-//     public function __construct(PDO $dbconn) {
-//         parent::__construct($dbconn);
-//         static::$db = $dbconn;
-//     }
-
-//     public static function setConnection(PDO $dbconn) {
-//         static::$db = $dbconn;
-//     }
-
-//     public static function query() {
-//         return new static(static::$db);
-//     }
-
-//     public static function all() {
-//         return static::query()->table((new static)->table)->get();
-//     }
-
-//     public static function find($id) {
-//         return static::query()->table((new static)->table)->where("id", $id)->first();
-//     }
-
-//     public static function create(array $data) {
-//         $instance = new static(static::$db);
-
-//         // Only keep fillable keys
-//         $filtered = array_intersect_key($data, array_flip($instance->fillable));
-
-//         return static::query()->table($instance->table)->insert($filtered);
-//     }
-// }
-
-class Model extends QueryBuilder {
-    protected $table;                 // child models must define this
-    protected $fillable = [];         // define fillable columns in child model
-    protected static $pdo = null;     // shared PDO across all models
-
-    public function __construct(?PDO $dbconn = null) {
+    /**
+     * Constructor
+     *
+     * @param PDO|null $dbconn
+     * @throws Exception
+     */
+    public function __construct(?PDO $dbconn = null)
+    {
         if ($dbconn instanceof PDO) {
             static::$pdo = $dbconn;
             parent::__construct($dbconn);
@@ -129,44 +48,185 @@ class Model extends QueryBuilder {
         parent::__construct(static::$pdo);
     }
 
-    // One-time bootstrap from your app (e.g., in bootstrap.php)
-    public static function setConnection(PDO $pdo): void {
+    /**
+     * Set shared PDO connection
+     *
+     * @param PDO $pdo
+     */
+    public static function setConnection(PDO $pdo): void
+    {
         static::$pdo = $pdo;
     }
 
-    // Returns the table name defined by the child model
-    public static function tableName(): string {
+    /**
+     * Get table name
+     *
+     * @return string
+     */
+    public static function tableName(): string
+    {
         return (new static(static::$pdo))->table;
     }
 
-    // Start a new query builder for this model
-    public static function query(): self {
+    /**
+     * Start a new query for the model
+     *
+     * @return QueryBuilder
+     */
+    public static function query(): QueryBuilder
+    {
         return (new static(static::$pdo))->table(static::tableName());
     }
 
-    // Fetch all rows
-    public static function all(): array {
+    /**
+     * Get all rows
+     *
+     * @return array
+     */
+    public static function all(): array
+    {
         return static::query()->get();
     }
 
-    // Find one row by id (or null)
-    public static function find($id) {
+    /**
+     * Find row by primary key (id)
+     *
+     * @param mixed $id
+     * @return array|null
+     */
+    public static function find($id)
+    {
         return static::query()->where("id", $id)->first();
     }
 
-    // Insert new record with fillable protection
-    public static function create(array $data) {
+    /**
+     * Create a new record (fillable protection)
+     *
+     * @param array $data
+     * @return int Last insert ID
+     * @throws Exception
+     */
+    public static function create(array $data)
+    {
         $instance = new static(static::$pdo);
-
-        // filter only fillable keys
         $filtered = array_intersect_key($data, array_flip($instance->fillable));
 
         if (empty($filtered)) {
-            throw new Exception("No valid fillable fields provided for insert.");
+            throw new Exception("No valid fillable fields provided.");
         }
 
         return static::query()->insert($filtered);
     }
+
+    /**
+     * Update rows using fillable protection (non-static)
+     *
+     * @param array $data
+     * @return bool
+     * @throws Exception
+     */
+    public function update(array $data): bool
+    {
+        $fillableData = array_intersect_key($data, array_flip($this->fillable));
+
+        if (empty($fillableData)) {
+            throw new Exception("No valid fillable fields provided for update.");
+        }
+
+        return parent::update($fillableData);
+    }
+
+    /**
+     * Static helper to update by ID (Laravel style)
+     *
+     * @param int $id
+     * @param array $data
+     * @return bool
+     */
+    public static function updateById(int $id, array $data): bool
+    {
+        return static::query()->where("id", $id)->update($data);
+    }
+
+    /**
+     * Save the current instance (insert or update depending on existence)
+     *
+     * @return bool|int
+     * @throws Exception
+     */
+    public function save()
+    {
+        if (isset($this->id)) {
+            return $this->update((array)$this);
+        } else {
+            return static::create((array)$this);
+        }
+    }
+
+    /**
+     * Define one-to-one relationship
+     *
+     * @param string $relatedModel
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return QueryBuilder
+     */
+    public function hasOne(string $relatedModel, string $foreignKey, string $localKey = "id"): QueryBuilder
+    {
+        $relatedInstance = new $relatedModel(static::$pdo);
+        $localValue = $this->{$localKey};
+        return $relatedInstance->query()->where($foreignKey, $localValue)->limit(1);
+    }
+
+    /**
+     * Define one-to-many relationship
+     *
+     * @param string $relatedModel
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return QueryBuilder
+     */
+    public function hasMany(string $relatedModel, string $foreignKey, string $localKey = "id"): QueryBuilder
+    {
+        $relatedInstance = new $relatedModel(static::$pdo);
+        $localValue = $this->{$localKey};
+        return $relatedInstance->query()->where($foreignKey, $localValue);
+    }
+
+    /**
+     * Define inverse one-to-one or one-to-many relationship
+     *
+     * @param string $relatedModel
+     * @param string $foreignKey
+     * @param string $ownerKey
+     * @return QueryBuilder
+     */
+    public function belongsTo(string $relatedModel, string $foreignKey, string $ownerKey = "id"): QueryBuilder
+    {
+        $relatedInstance = new $relatedModel(static::$pdo);
+        $foreignValue = $this->{$foreignKey};
+        return $relatedInstance->query()->where($ownerKey, $foreignValue)->limit(1);
+    }
+
+    /**
+     * Forward static calls to QueryBuilder to allow chainable Laravel-style queries
+     *
+     * @param string $method
+     * @param array  $arguments
+     * @return mixed
+     */
+    public static function __callStatic($method, $arguments)
+    {
+        $instance = new static(static::$pdo);
+
+        // If the method exists on the model itself (like updateById), call it
+        if (method_exists($instance, $method)) {
+            return $instance->$method(...$arguments);
+        }
+
+        // Otherwise, forward to a QueryBuilder instance
+        $query = (new static(static::$pdo))->table($instance->table);
+        return $query->$method(...$arguments);
+    }
+
 }
-
-
