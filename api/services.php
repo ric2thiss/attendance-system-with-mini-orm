@@ -13,7 +13,9 @@ switch ($resource) {
 
         if($method === "GET")
         {
+            
             echo json_encode($attendanceController->index());
+            // print_r($resource);
             return;
         }
 
@@ -26,7 +28,7 @@ switch ($resource) {
 
             // Pass to controller
             $attendanceController->store($data);
-            
+
         }
         break;
     case 'fingerprints':

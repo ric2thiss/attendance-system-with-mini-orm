@@ -25,20 +25,19 @@ class AttendanceController {
     {
         // 1. Validation
         if (!isset($data["employee_id"]) || empty($data["employee_id"])) {
-            http_response_code(422); // Unprocessable Entity
+            http_response_code(422);
             echo json_encode([
                 "success" => false,
-                "error" => "Employee ID is required"
+                "error"   => "Employee ID is required"
             ]);
             return;
         }
 
-        // Optional: check type (integer vs string)
         if (!is_string($data["employee_id"])) {
             http_response_code(422);
             echo json_encode([
                 "success" => false,
-                "error" => "Employee ID must be String"
+                "error"   => "Employee ID must be string"
             ]);
             return;
         }
@@ -47,31 +46,46 @@ class AttendanceController {
         $data["created_at"] = date("Y-m-d H:i:s");
         $data["updated_at"] = date("Y-m-d H:i:s");
 
-        // 3. Get valid windows (labels)
+        // 3. Get valid windows
         $windows = $this->windows();
-        $labels  = array_column($windows, 'label'); // ["morning_in", "morning_out", ...]
+        $labels  = array_column($windows, 'label');
 
-        // 4. Validate window label
         if (!isset($data["window"]) || !in_array($data["window"], $labels)) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
-                "error" => "Invalid or missing window label"
+                "error"   => "Invalid or missing window label"
             ]);
             return;
         }
 
-        // 5. Save attendance (assuming Attendance::create exists)
+        // 4. Check if already logged today
+        $existing = $this->attendance->where([
+            "employee_id" => $data["employee_id"],
+            "window"      => $data["window"],
+        ])->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
+        ->first();
+
+        if ($existing) {
+            http_response_code(409); // Conflict
+            echo json_encode([
+                "success" => false,
+                "error"   => "Already logged for this window today"
+            ]);
+            return;
+        }
+
+        // 5. Save attendance
         try {
             $saved = $this->attendance->create($data);
 
-            http_response_code(201); // Created
+            http_response_code(201);
             echo json_encode([
                 "success" => true,
-                "data" => $saved
+                "data"    => $saved
             ]);
         } catch (Exception $e) {
-            http_response_code(500); // Internal Server Error
+            http_response_code(500);
             echo json_encode([
                 "success" => false,
                 "error"   => "Failed to save attendance",
@@ -79,6 +93,7 @@ class AttendanceController {
             ]);
         }
     }
+
 
 
     public function windows()

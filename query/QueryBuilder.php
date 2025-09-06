@@ -33,17 +33,46 @@ class QueryBuilder {
         return $this;
     }
 
-    public function where($column, $value) {
-        $this->conditions[] = ["AND", "$column = ?"];
-        $this->params[] = $value;
+    // public function where($column, $value) {
+    //     $this->conditions[] = ["AND", "$column = ?"];
+    //     $this->params[] = $value;
+    //     return $this;
+    // }
+
+    // public function orWhere($column, $value) {
+    //     $this->conditions[] = ["OR", "$column = ?"];
+    //     $this->params[] = $value;
+    //     return $this;
+    // }
+
+    public function where($column, $value = null) {
+        if (is_array($column)) {
+            // Accept associative array
+            foreach ($column as $col => $val) {
+                $this->conditions[] = ["AND", "$col = ?"];
+                $this->params[] = $val;
+            }
+        } else {
+            // Backward compatible
+            $this->conditions[] = ["AND", "$column = ?"];
+            $this->params[] = $value;
+        }
         return $this;
     }
 
-    public function orWhere($column, $value) {
-        $this->conditions[] = ["OR", "$column = ?"];
-        $this->params[] = $value;
+    public function orWhere($column, $value = null) {
+        if (is_array($column)) {
+            foreach ($column as $col => $val) {
+                $this->conditions[] = ["OR", "$col = ?"];
+                $this->params[] = $val;
+            }
+        } else {
+            $this->conditions[] = ["OR", "$column = ?"];
+            $this->params[] = $value;
+        }
         return $this;
     }
+
 
     public function whereIn($column, array $values) {
         $placeholders = implode(", ", array_fill(0, count($values), "?"));
@@ -78,6 +107,18 @@ class QueryBuilder {
     public function whereNotBetween($column, array $values) {
         $this->conditions[] = ["AND", "$column NOT BETWEEN ? AND ?"];
         $this->params = array_merge($this->params, $values);
+        return $this;
+    }
+
+    public function whereRaw($sql, array $params = []) {
+        $this->conditions[] = ["AND", "($sql)"];
+        $this->params = array_merge($this->params, $params);
+        return $this;
+    }
+
+    public function orWhereRaw($sql, array $params = []) {
+        $this->conditions[] = ["OR", "($sql)"];
+        $this->params = array_merge($this->params, $params);
         return $this;
     }
 
