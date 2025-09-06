@@ -1,24 +1,17 @@
 <?php
 require_once __DIR__ . "/../bootstrap.php";
 
-$db = (new Database())->connect();
-new Attendance($db);
+$attendanceController = new AttendanceController();
 
-$updated = Attendance::query()
-    ->where("employee_id", "123")
-    ->update([
-        "window" => "afternoon_out",
-        "updated_at" => date("Y-m-d H:i:s")
-    ]);
+print_r($attendanceController->index());
+// print_r($attendanceController->index());
+// $db = (new Database())->connect();
+// new Attendance($db);
 
-echo "Rows updated: $updated";
-$attendance = Attendance::query()
-    ->where("employee_id", "123")
-    ->get();
+// $updated = Attendance::query()
+//     ->where("employee_id", "123")->delete();
 
-// print_r($attendance);
-
-
+// echo "Deleted? ". $updated;
 
 // $attendances = Attendance::query()->where("window", "afternoon_in")->first();
 
