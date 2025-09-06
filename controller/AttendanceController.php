@@ -19,4 +19,15 @@ class AttendanceController {
             "fingerprints"=>$fingerprint
         ];
     }
+
+    public function store($data)
+    {
+        $lastIdInserted= $this->attendance->create($data);
+
+        try {
+            echo "Last Id Inserted: ". $lastIdInserted;
+        } catch (Exception $error) {
+            echo "Error: " . $error->getMessage();
+        }
+    }
 }
