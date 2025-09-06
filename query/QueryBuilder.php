@@ -279,7 +279,7 @@ class QueryBuilder {
         }
         return $sql;
     }
-
+    
     protected function resetQuery() {
         $this->conditions = [];
         $this->params = [];

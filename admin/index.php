@@ -1,16 +1,16 @@
 <?php
 require_once __DIR__ . "/../bootstrap.php";
 
-$attendanceController = new AttendanceController();
+// $attendanceController = new AttendanceController();
 
-print_r($attendanceController->index());
+// print_r($attendanceController->index());
 
-print_r($attendanceController->store([
-            "employee_id" => 123,
-            "created_at" => date("Y-m-d H:i:s"),
-            "updated_at" => date("Y-m-d H:i:s"),
-            "window" => "IN", 
-]));
+// print_r($attendanceController->store([
+//             "employee_id" => 123,
+//             "created_at" => date("Y-m-d H:i:s"),
+//             "updated_at" => date("Y-m-d H:i:s"),
+//             "window" => "IN", 
+// ]));
 // print_r($attendanceController->index());
 // $db = (new Database())->connect();
 // new Attendance($db);
