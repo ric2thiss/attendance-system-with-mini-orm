@@ -19,19 +19,39 @@ switch ($resource) {
             return;
         }
 
-        if($method === "POST")
+        if ($method === "POST") 
         {
-            $raw = file_get_contents("php://input");
-
-            // Decode JSON to associative array
+            $raw  = file_get_contents("php://input");
             $data = json_decode($raw, true);
 
-            // Pass to controller
-            $attendanceController->store($data);
+            // Fallback: if not JSON, use $_POST
+            if (is_null($data)) {
+                $data = $_POST;
+            }
 
+            $attendanceController->store($data);
         }
         break;
-    case 'fingerprints':
+    
+    case 'templates':
+        $fingerprintsController = new FingerprintsController();
+        if($method === "GET")
+        {
+            echo json_encode($fingerprintsController->index());
+        }
+        
+        break;
+    
+    case 'attendance-windows':
+        if($method === "GET")
+        {
+            $attendanceController = new AttendanceController();
+            echo json_encode($attendanceController->windows());
+        }
+        
+        break;
+    
+    case 'check':
         if($method === "GET")
         {
 

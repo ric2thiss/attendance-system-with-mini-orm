@@ -2,21 +2,21 @@
 
 class AttendanceController {
     protected $attendance;
-    protected $fingerprints;
+    // protected $fingerprints;
 
     public function __construct()
     {
         $db = (new Database())->connect();
         $this->attendance = new Attendance($db);
-        $this->fingerprints = new Fingerprints($db);
+        // $this->fingerprints = new Fingerprints($db);
     }
     public function index()
     {
         $attendances = $this->attendance::all();
-        $fingerprint = $this->fingerprints::all();
+        // $fingerprint = $this->fingerprints::all();
         return [
             "attendances"=>$attendances,
-            "fingerprints"=>$fingerprint,
+            // "fingerprints"=>$fingerprint,
             "windows"=> $this->windows()
         ];
     }
@@ -42,12 +42,21 @@ class AttendanceController {
             return;
         }
 
+        if (!isset($data["window"]) || empty($data["window"])) {
+            http_response_code(422);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Employee ID is required"
+            ]);
+            return;
+        }
+
         // 2. Auto-fill timestamps
-        $data["created_at"] = date("Y-m-d H:i:s");
-        $data["updated_at"] = date("Y-m-d H:i:s");
+        $data["created_at"] = $this->now();
+        $data["updated_at"] = $this->now();
 
         // 3. Get valid windows
-        $windows = $this->windows();
+        $windows = $this->getWindows();
         $labels  = array_column($windows, 'label');
 
         if (!isset($data["window"]) || !in_array($data["window"], $labels)) {
@@ -82,7 +91,8 @@ class AttendanceController {
             http_response_code(201);
             echo json_encode([
                 "success" => true,
-                "data"    => $saved
+                "data"    => $saved,
+                "message" => "Attendance recorded successfully"
             ]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -98,7 +108,7 @@ class AttendanceController {
 
     public function windows()
     {
-        return  $this->getWindows();
+        return  ["windows"=> $this->getWindows()];
     }
 
      private function getWindows()
@@ -131,5 +141,6 @@ class AttendanceController {
         $dt = new DateTime("now", new DateTimeZone($timezone));
         return $dt->format($format);
     }
+
 
 }

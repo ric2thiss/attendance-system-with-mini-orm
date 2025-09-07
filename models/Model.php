@@ -83,9 +83,20 @@ class Model extends QueryBuilder
      *
      * @return array
      */
-    public static function all(): array
+    // public static function all(): array
+    // {
+    //     return static::query()->get();
+    // }
+
+    /**
+     * Get all rows, optionally selecting specific columns
+     *
+     * @param array $columns
+     * @return array
+     */
+    public static function all(array $columns = ["*"]): array
     {
-        return static::query()->get();
+        return static::query()->select(...$columns)->get();
     }
 
     /**
