@@ -1,0 +1,13 @@
+employee_id,date,status
+101,2025-09-01,Present
+101,2025-09-02,Absent
+101,2025-09-03,Absent
+102,2025-09-01,Present
+102,2025-09-02,Absent
+102,2025-09-03,Absent
+103,2025-09-01,Absent
+103,2025-09-02,Present
+103,2025-09-03,Late
+104,2025-09-01,Absent
+104,2025-09-02,Absent
+104,2025-09-03,Absent

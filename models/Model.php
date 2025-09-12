@@ -129,6 +129,7 @@ class Model extends QueryBuilder
         return static::query()->insert($filtered);
     }
 
+
     /**
      * Update rows using fillable protection (non-static)
      *

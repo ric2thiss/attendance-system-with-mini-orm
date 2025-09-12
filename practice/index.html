@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script>
+async function fillForm() {
+  const formUrl = './ched.pdf'; // blank template
+  const existingPdfBytes = await fetch(formUrl).then(res => res.arrayBuffer());
+
+  const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+  const pages = pdfDoc.getPages();
+  const firstPage = pages[0];
+
+  const { height } = firstPage.getSize();
+
+  firstPage.drawText("Juan Dela Cruz", {
+    x: 100,  // adjust
+    y: height - 200, // adjust
+    size: 12
+  });
+
+  firstPage.drawText("2000-01-01", { x: 100, y: height - 180, size: 12 });
+  firstPage.drawText("Quezon City", { x: 100, y: height - 210, size: 12 });
+
+  const pdfBytes = await pdfDoc.save();
+
+  // download
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = "UniFAST_Form_Filled.pdf";
+  link.click();
+}
+</script>
+
+<button onclick="fillForm()">Download PDF</button>
+
+</body>
+</html>

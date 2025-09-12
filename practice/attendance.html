@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="prediction"></div>
+<script>
+fetch("./attendance_prediction.php")
+  .then(res => res.json())
+  .then(data => {
+     document.getElementById("prediction").innerText =
+        data.risk_of_absence ? "⚠️ High Risk of Absence" : "✅ Low Risk";
+  });
+</script>
+</body>
+</html>

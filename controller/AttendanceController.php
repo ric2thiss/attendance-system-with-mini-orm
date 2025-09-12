@@ -23,7 +23,7 @@ class AttendanceController {
 
     public function store($data)
     {
-        // 1. Validation
+        // Validation
         if (!isset($data["employee_id"]) || empty($data["employee_id"])) {
             http_response_code(422);
             echo json_encode([
@@ -51,11 +51,11 @@ class AttendanceController {
             return;
         }
 
-        // 2. Auto-fill timestamps
+        // Auto-fill timestamps
         $data["created_at"] = $this->now();
         $data["updated_at"] = $this->now();
 
-        // 3. Get valid windows
+        // Get valid windows
         $windows = $this->getWindows();
         $labels  = array_column($windows, 'label');
 
@@ -68,7 +68,7 @@ class AttendanceController {
             return;
         }
 
-        // 4. Check if already logged today
+        // Check if already logged today
         $existing = $this->attendance->where([
             "employee_id" => $data["employee_id"],
             "window"      => $data["window"],
