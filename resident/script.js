@@ -139,8 +139,8 @@ function logAttendance(id, name) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: id,
-        name: name
+        id,
+        name
         // time: new Date().toISOString()
       })
     })

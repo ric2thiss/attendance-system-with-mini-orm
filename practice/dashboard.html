@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+    }
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 220px;
+      background-color: #1F3A93;
+      color: #fff;
+      padding-top: 20px;
+    }
+    .sidebar a {
+      color: #fff;
+      text-decoration: none;
+      display: block;
+      padding: 12px 20px;
+      margin: 5px 0;
+    }
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+    }
+    .sidebar .logo {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    /* Main Content */
+    .main-content {
+      margin-left: 220px;
+      padding: 20px;
+    }
+    .card {
+      border: none;
+      border-radius: 12px;
+      padding: 15px;
+    }
+    .card .icon {
+      font-size: 2.5rem;
+      opacity: 0.8;
+    }
+    .card h4 {
+      font-weight: bold;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo mb-4">Attendance System</div>
+    <p class="px-3">Welcome back,<br><strong>Juan Dela Cruz</strong></p>
+    <a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
+    <a href="#"><i class="bi bi-calendar-check"></i> Attendance Logs</a>
+    <a href="#"><i class="bi bi-people"></i> Employees</a>
+    <a href="#"><i class="bi bi-bar-chart"></i> Reports</a>
+    <a href="#"><i class="bi bi-gear"></i> Settings</a>
+    <hr class="bg-light">
+    <a href="#"><i class="bi bi-box-arrow-right"></i> Logout</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3>Attendance Dashboard</h3>
+      <button class="btn btn-outline-secondary btn-sm">📅 September 20, 2025</button>
+    </div>
+
+    <!-- Top Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card d-flex flex-row align-items-center justify-content-between">
+          <i class="bi bi-people-fill icon text-primary"></i>
+          <div class="text-center">
+            <h4>320</h4>
+            <p class="mb-0 small">Total Employees</p>
+          </div>
+          <span class="text-muted">—</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card d-flex flex-row align-items-center justify-content-between">
+          <i class="bi bi-person-check-fill icon text-success"></i>
+          <div class="text-center">
+            <h4>298</h4>
+            <p class="mb-0 small">Present Today</p>
+          </div>
+          <span class="text-success fw-bold">93%</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card d-flex flex-row align-items-center justify-content-between">
+          <i class="bi bi-person-bounding-box icon text-info"></i>
+          <div class="text-center">
+            <h4>15</h4>
+            <p class="mb-0 small">On Leave</p>
+          </div>
+          <span class="text-info fw-bold">—</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card d-flex flex-row align-items-center justify-content-between">
+          <i class="bi bi-person-x-fill icon text-danger"></i>
+          <div class="text-center">
+            <h4>7</h4>
+            <p class="mb-0 small">Absent</p>
+          </div>
+          <span class="text-danger fw-bold">7%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphs -->
+    <div class="row g-3">
+      <div class="col-md-8">
+        <div class="chart-container bg-white p-3 rounded">
+          <h6>Monthly Attendance Overview</h6>
+          <canvas id="attendanceChart"></canvas>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="chart-container bg-white p-3 rounded">
+          <h6>Attendance Breakdown</h6>
+          <canvas id="breakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Monthly Attendance Line Chart
+    const ctx1 = document.getElementById('attendanceChart');
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
+        datasets: [{
+          label: 'Present',
+          data: [280, 290, 300, 295, 310, 305, 299, 310, 298],
+          borderColor: '#1F3A93',
+          backgroundColor: 'rgba(31,58,147,0.2)',
+          fill: true
+        },{
+          label: 'Absent',
+          data: [10, 15, 12, 18, 20, 22, 19, 15, 7],
+          borderColor: '#E91E63',
+          backgroundColor: 'rgba(233,30,99,0.2)',
+          fill: true
+        }]
+      },
+      options: { responsive: true }
+    });
+
+    // Attendance Breakdown Pie Chart
+    const ctx2 = document.getElementById('breakdownChart');
+    new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['Present', 'On Leave', 'Absent'],
+        datasets: [{
+          data: [298, 15, 7],
+          backgroundColor: ['#4CAF50','#FFC107','#E91E63']
+        }]
+      },
+      options: { responsive: true }
+    });
+  </script>
+</body>
+</html>

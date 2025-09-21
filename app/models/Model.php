@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../query/QueryBuilder.php';
+require_once __DIR__ . '/../../app/query/QueryBuilder.php';
 
 /**
  * Base Model class for Laravel-style ORM

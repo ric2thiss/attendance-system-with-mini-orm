@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../models/Model.php';
+require_once __DIR__ . '/../../app/models/Model.php';
 
 class Fingerprints extends Model {
     protected $table = "fingerprints";

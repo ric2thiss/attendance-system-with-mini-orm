@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bootstrap Local Example</title>
+  
+  <!-- Link Bootstrap CSS (from your downloaded folder) -->
+  <link rel="stylesheet" href="../bootstrap-5.3.8-dist/css/bootstrap.min.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Style -->
+   <style>
+    body { 
+      background-color: #f8f9fa; 
+    }
+
+    .sidebar {
+      height: 100vh; background-color: #1F3A93; color: #fff;
+      position: fixed; top: 0; left: 0; width: 250px; padding-top: 20px;
+    }
+
+    .sidebar a {
+      color: #fff; text-decoration: none; display: block;
+      padding: 12px 20px; transition: background 0.3s;
+    }
+    .sidebar a:hover { 
+      background-color: #2E4AAB; 
+    }
+    .sidebar i { 
+      margin-right: 10px; 
+    }
+
+
+    .content { 
+      margin-left: 260px; padding: 30px; 
+    }
+    .card { 
+      border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); 
+    }
+    .card-icon {
+      font-size: 2rem; color: #1F3A93; 
+    }
+   </style>
+</head>
+<body>
+    <!-- Sidebar -->
+  <div class="sidebar">
+    <h4 class="text-center mb-4">Brgy. Sto. Rosario, Magallanes</h4>
+    <a href="#"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    <a href="#"><i class="fa-solid fa-calendar-check"></i> Attendance Logs</a>
+    <a href="#"><i class="fa-solid fa-sack-dollar"></i> Payroll</a>
+    <a href="#"><i class="fa-solid fa-users"></i> Employees</a>
+    <a href="#"><i class="fa-solid fa-chart-bar"></i> Reports</a>
+    <a href="#"><i class="fa-solid fa-gear"></i> Settings</a>
+    <a href="#"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </div>
+
+  <!-- Content -->
+   <div class="content">
+      <h3 class="mb-4">Payroll Dashboard</h3>
+
+      <div class="row mb-4">
+
+        <div class="col-md-3">
+          <div class="card text-center p-3">
+            <i class="fa-solid fa-users card-icon mb-2"></i>
+            <h5>Total Employees</h5>
+            <h4 id="totalEmployees">3</h4>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card text-center p-3">
+            <i class="fa-solid fa-users card-icon mb-2"></i>
+            <h5>Total Employees</h5>
+            <h4 id="totalEmployees">3</h4>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card text-center p-3">
+            <i class="fa-solid fa-users card-icon mb-2"></i>
+            <h5>Total Employees</h5>
+            <h4 id="totalEmployees">3</h4>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card text-center p-3">
+            <i class="fa-solid fa-users card-icon mb-2"></i>
+            <h5>Total Employees</h5>
+            <h4 id="totalEmployees">3</h4>
+          </div>
+        </div>
+
+      </div>
+      
+   </div>
+  
+
+  <!-- Link Bootstrap JS -->
+  <script src="../bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

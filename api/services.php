@@ -6,6 +6,11 @@ header("Content-Type: application/json");
 $resource = $_GET["resource"];
 $method = $_SERVER["REQUEST_METHOD"];
 
+if (!isset($_GET['resource'])) {
+    http_response_code(400);
+    echo json_encode(["error" => "Missing resource"]);
+    exit;
+}
 
 switch ($resource) {
     case 'attendances':
