@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Attendance Logs</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font family -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc; /* Light background for the main content area */
+        }
+        /* Custom dark blue for the sidebar */
+        .sidebar-bg {
+            background-color: #172B4D; /* A deep navy blue, consistent with dashboard */
+        }
+        /* Active link background color */
+        .active-link {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #007bff; /* Light blue border highlight */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+
+        <!-- 1. SIDEBAR NAVIGATION -->
+        <aside class="sidebar-bg w-64 fixed top-0 left-0 h-screen text-white shadow-xl z-10 transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+            <div class="p-6">
+                <!-- Logo/System Name -->
+                <div class="flex items-center space-x-3 mb-8">
+                    <img src="https://placehold.co/40x40/007bff/white?text=A" alt="Logo" class="rounded-full bg-white p-1">
+                    <span class="text-xl font-semibold tracking-wide">Attendance System</span>
+                </div>
+
+                <!-- User Greeting -->
+                <div class="mb-10 p-3 bg-white bg-opacity-10 rounded-lg">
+                    <p class="text-sm text-gray-300">Welcome back,</p>
+                    <p class="font-medium">Juan Dela Cruz</p>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="space-y-1">
+                    <a href="dashboard_overview.html" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-1v-10a1 1 0 00-1-1h-3m-4 7h4m-4 7h4m-4-7h.01"></path></svg>
+                        Dashboard
+                    </a>
+                    <!-- Attendance Logs is the Active Link -->
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors active-link">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Attendance Logs
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2c0-.656-.126-1.283-.356-1.857M9 20H7l-1-1v-6a1 1 0 011-1h10a1 1 0 011 1v6l-1 1h-2"></path></svg>
+                        Employees
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v1a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h12a1 1 0 011 1v2"></path></svg>
+                        Payroll
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m0 10a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+                        Reports
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.222.955 3.52 1.096"></path></svg>
+                        Settings
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Logout Button -->
+            <div class="absolute bottom-0 w-full p-6">
+                <a href="#" class="flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-colors shadow-lg">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </a>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle for Mobile -->
+        <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-20 p-2 bg-blue-600 text-white rounded-full shadow-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <!-- 2. MAIN CONTENT AREA -->
+        <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
+
+            <!-- Top Header/Date -->
+            <header class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-semibold text-gray-800">Attendance Logs</h1>
+                    <p class="text-gray-500">View and manage daily employee clock-in and clock-out data.</p>
+                </div>
+                <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+            </header>
+            
+            <!-- Filter & Search Container (Consistent card styling) -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    
+                    <!-- Date Range Picker (Mockup) -->
+                    <div class="col-span-1 md:col-span-2">
+                        <label for="date-range" class="block text-xs font-medium text-gray-500 mb-1">Date Range</label>
+                        <input type="text" id="date-range" placeholder="01/01/2025 - 09/28/2025" 
+                               class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="col-span-1 md:col-span-1">
+                        <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Search Employee</label>
+                        <div class="relative">
+                            <input type="text" id="search" placeholder="Name or ID..."
+                                   class="w-full p-2 pl-10 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                    </div>
+
+                    <!-- Filter/Action Button -->
+                    <div class="col-span-1 md:col-span-1 flex justify-start md:justify-end mt-4 md:mt-0">
+                        <button class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md">
+                            Export Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Attendance Logs Table Container (Consistent card styling) -->
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg border border-gray-100">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Daily Logs (Today)</h2>
+                
+                <!-- Table Wrapper for Horizontal Scroll on small screens -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time In</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Out</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <!-- Sample Log 1: Present/On Time -->
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <div class="flex items-center">
+                                        <img class="h-8 w-8 rounded-full mr-3" src="https://placehold.co/40x40/007bff/white?text=JD" alt="Employee Photo">
+                                        John Doe (ID: 1001)
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-28</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">08:58 AM</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">05:05 PM</td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">8h 07m</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Office - Main</td>
+                            </tr>
+                            
+                            <!-- Sample Log 2: Late -->
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <div class="flex items-center">
+                                        <img class="h-8 w-8 rounded-full mr-3" src="https://placehold.co/40x40/f97316/white?text=AS" alt="Employee Photo">
+                                        Alice Smith (ID: 1002)
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-28</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-yellow-600 font-semibold">09:15 AM</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Late (In)</span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">0h 00m</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Remote</td>
+                            </tr>
+
+                            <!-- Sample Log 3: Absent -->
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <div class="flex items-center">
+                                        <img class="h-8 w-8 rounded-full mr-3" src="https://placehold.co/40x40/ef4444/white?text=MB" alt="Employee Photo">
+                                        Michael Brown (ID: 1003)
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-28</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Absent</span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">0h 00m</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">N/A</td>
+                            </tr>
+                            
+                            <!-- Sample Log 4: Overtime -->
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <div class="flex items-center">
+                                        <img class="h-8 w-8 rounded-full mr-3" src="https://placehold.co/40x40/10b981/white?text=CL" alt="Employee Photo">
+                                        Chris Lee (ID: 1004)
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">2025-09-28</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">08:45 AM</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">07:30 PM</td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Overtime</span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">10h 45m</td>
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Office - Annex</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination (Mockup) -->
+                <div class="mt-6 flex justify-between items-center text-sm text-gray-600">
+                    <p>Showing 1 to 10 of 120 results</p>
+                    <div class="space-x-1">
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 transition">Previous</button>
+                        <button class="px-3 py-1 border border-blue-500 bg-blue-500 text-white rounded-lg">1</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 transition">2</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 transition">3</button>
+                        <button class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 transition">Next</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JavaScript for Date and Sidebar Toggle -->
+    <script>
+        // --- 1. Update Header Date ---
+        function updateHeaderDate() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const dateElement = document.getElementById('current-date');
+            if(dateElement) {
+                dateElement.textContent = now.toLocaleDateString('en-US', options);
+            }
+        }
+        updateHeaderDate();
+
+        // --- 2. Mobile Sidebar Toggle Logic ---
+        const sidebar = document.getElementById('sidebar');
+        const toggleButton = document.getElementById('sidebar-toggle');
+        const mainContent = document.querySelector('main');
+
+        toggleButton.addEventListener('click', () => {
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                // Dim the main content when the sidebar is open on mobile
+                mainContent.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                mainContent.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        });
+
+        // Close sidebar if main content is clicked on mobile
+        mainContent.addEventListener('click', () => {
+            if (window.innerWidth < 768 && sidebar.classList.contains('translate-x-0')) {
+                 sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                mainContent.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #F9FAFB;
+    }
+    .sidebar {
+      background-color: #1F3A93;
+      min-height: 100vh;
+      color: white;
+    }
+    .sidebar .nav-link {
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+    .sidebar .nav-link.active,
+    .sidebar .nav-link:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-radius: 6px;
+    }
+    .content {
+      padding: 20px;
+    }
+    .card {
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+    .table thead {
+      background: #1F3A93;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-3 col-lg-2 d-md-block sidebar py-4">
+        <div class="text-center mb-4">
+          <img src="logo.png" alt="Barangay Logo" class="img-fluid mb-2" style="max-width:80px;">
+          <h5 class="fw-bold">Attendance System</h5>
+        </div>
+        <ul class="nav flex-column px-3">
+          <li class="nav-item"><a class="nav-link active" href="#">🏠 Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">👥 Employees</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">📝 Enrollment</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">📑 Attendance Logs</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">🧑‍🤝‍🧑 Visitor Logs</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">📅 Appointments</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">📈 Reports</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">⏰ Shifts</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">👤 Users & Roles</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">⚙ Settings</a></li>
+        </ul>
+      </nav>
+
+      <!-- Content -->
+      <main class="col-md-9 ms-sm-auto col-lg-10 content">
+
+        <!-- DASHBOARD -->
+        <section id="dashboard">
+          <h2 class="fw-bold mb-3">Dashboard Overview</h2>
+          <p class="text-muted">Good morning, Juan</p>
+
+          <div class="row g-3">
+            <div class="col-md-3"><div class="card p-3"><h6>Employees</h6><h3 class="fw-bold text-primary">120</h3></div></div>
+            <div class="col-md-3"><div class="card p-3"><h6>Visitors Today</h6><h3 class="fw-bold text-success">35</h3></div></div>
+            <div class="col-md-3"><div class="card p-3"><h6>Pending Appointments</h6><h3 class="fw-bold text-warning">12</h3></div></div>
+            <div class="col-md-3"><div class="card p-3"><h6>Service Requests</h6><h3 class="fw-bold text-danger">8</h3></div></div>
+          </div>
+
+          <div class="card mt-4 p-3">
+            <h5 class="fw-bold">Attendance Overview (September 2025)</h5>
+            <p>Presents: 2000 | Absents: 45 | Lates: 18 | Overtime: 5</p>
+            <div class="bg-light rounded p-5 text-center text-muted">[ Chart Placeholder ]</div>
+          </div>
+        </section>
+
+        <!-- EMPLOYEES -->
+        <section id="employees" class="mt-5">
+          <h2 class="fw-bold mb-3">Employees</h2>
+          <div class="card p-3">
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                <tr><td>001</td><td>John Doe</td><td>HR</td><td>Active</td><td><button class="btn btn-sm btn-primary">Edit</button></td></tr>
+                <tr><td>002</td><td>Maria Smith</td><td>IT</td><td>Active</td><td><button class="btn btn-sm btn-primary">Edit</button></td></tr>
+              </tbody>
+            </table>
+            <button class="btn btn-success mt-2">Add Employee</button>
+          </div>
+        </section>
+
+        <!-- ENROLLMENT -->
+        <section id="enrollment" class="mt-5">
+          <h2 class="fw-bold mb-3">Enrollment (Fingerprint)</h2>
+          <div class="card p-5 text-center">
+            <p class="mb-3">Place finger on scanner...</p>
+            <div class="border rounded p-5 mb-3 bg-light">[ Fingerprint Scanner Box ]</div>
+            <p>Status: Captured 2/4 samples</p>
+            <button class="btn btn-primary">Save Template</button>
+          </div>
+        </section>
+
+        <!-- ATTENDANCE LOGS -->
+        <section id="attendance-logs" class="mt-5">
+          <h2 class="fw-bold mb-3">Attendance Logs</h2>
+          <div class="card p-3">
+            <div class="row g-2 mb-3">
+              <div class="col-md-3"><input type="date" class="form-control"></div>
+              <div class="col-md-3"><select class="form-control"><option>All Employees</option></select></div>
+              <div class="col-md-3"><button class="btn btn-primary w-100">Filter</button></div>
+            </div>
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Name</th><th>IN</th><th>OUT</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>001</td><td>John D.</td><td>08:05</td><td>17:01</td><td>✔</td></tr>
+                <tr><td>002</td><td>Maria S.</td><td>09:10</td><td>17:00</td><td>L</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- VISITOR LOGS -->
+        <section id="visitor-logs" class="mt-5">
+          <h2 class="fw-bold mb-3">Visitor Logs</h2>
+          <div class="card p-3">
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Visitor Name</th><th>Time In</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>V01</td><td>Anna P.</td><td>09:00</td><td>Appointment ✔</td></tr>
+                <tr><td>V02</td><td>Mark J.</td><td>10:15</td><td>Walk-in</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- APPOINTMENTS -->
+        <section id="appointments" class="mt-5">
+          <h2 class="fw-bold mb-3">Appointments</h2>
+          <div class="card p-3">
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Visitor</th><th>Service</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>A01</td><td>Anna P.</td><td>Certificate</td><td>Done</td></tr>
+                <tr><td>A02</td><td>Mark J.</td><td>Barangay ID</td><td>Pending</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="reports" class="mt-5">
+          <h2 class="fw-bold mb-3">Reports</h2>
+          <div class="card p-5 text-center text-muted">[ Charts and Analytics Placeholder ]</div>
+        </section>
+
+        <!-- SHIFTS -->
+        <section id="shifts" class="mt-5">
+          <h2 class="fw-bold mb-3">Shifts & Schedules</h2>
+          <div class="card p-3">
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Shift</th><th>Time In</th><th>Time Out</th></tr></thead>
+              <tbody>
+                <tr><td>S01</td><td>Morning</td><td>08:00</td><td>12:00</td></tr>
+                <tr><td>S02</td><td>Afternoon</td><td>13:00</td><td>17:00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- USERS -->
+        <section id="users" class="mt-5">
+          <h2 class="fw-bold mb-3">Users & Roles</h2>
+          <div class="card p-3">
+            <table class="table table-striped">
+              <thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>U01</td><td>admin</td><td>HR/Admin</td><td>Active</td></tr>
+                <tr><td>U02</td><td>hr1</td><td>HR</td><td>Active</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="settings" class="mt-5">
+          <h2 class="fw-bold mb-3">Settings</h2>
+          <div class="card p-3">
+            <ul>
+              <li>Organization Info</li>
+              <li>Biometric Device Config</li>
+              <li>Notification Settings</li>
+              <li>Backup & Restore</li>
+              <li>Face Recognition Parameters</li>
+            </ul>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</body>
+</html>

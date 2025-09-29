@@ -16,6 +16,7 @@ class AttendanceController {
         // $fingerprint = $this->fingerprints::all();
         return [
             "attendances"=>$attendances,
+            "attendancesTodayCount" => $this->getAttendanceCountToday(),
             // "fingerprints"=>$fingerprint,
             "windows"=> $this->windows()
         ];
@@ -116,7 +117,7 @@ class AttendanceController {
         return [
             [
                 'label' => 'morning_in',
-                'start' => '08:00:00',
+                'start' => '06:00:00',
                 'end' => '11:59:00',
             ],
             [
@@ -137,10 +138,20 @@ class AttendanceController {
         ];
     }
 
-    function now($format = "Y-m-d H:i:s", $timezone = "Asia/Manila") {
+    function now($format = "Y-m-d H:i:s", $timezone = "Asia/Manila")
+    {
         $dt = new DateTime("now", new DateTimeZone($timezone));
         return $dt->format($format);
     }
+
+    function getAttendanceCountToday()
+    {
+        return $this->attendance
+            ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
+            ->count();
+    }
+
+
 
 
 }

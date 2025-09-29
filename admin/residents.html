@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resident Management Prototype</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fc; }
+        .sidebar-bg { background-color: #172B4D; }
+        .active-link { background-color: rgba(255, 255, 255, 0.1); border-left: 4px solid #007bff; }
+        .loader { border-top-color: #3b82f6; -webkit-animation: spin 1s ease-in-out infinite; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Modal Transition Styles */
+        .modal-enter-active #modal-content-wrapper, .modal-leave-active #modal-content-wrapper {
+            transition: all 0.3s ease;
+        }
+        .modal-enter-from #modal-content-wrapper, .modal-leave-to #modal-content-wrapper {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+
+        <!-- 1. SIDEBAR NAVIGATION -->
+        <aside class="sidebar-bg w-64 fixed top-0 left-0 h-screen text-white shadow-xl z-30 transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+            <div class="p-6">
+                <div class="flex items-center space-x-3 mb-8">
+                    <img src="https://placehold.co/40x40/007bff/white?text=A" alt="Logo" class="rounded-full">
+                    <span class="text-xl font-semibold tracking-wide">Attendance System</span>
+                </div>
+                <div class="mb-10 p-3 bg-white bg-opacity-10 rounded-lg">
+                    <p class="text-sm text-gray-300">Prototype Mode</p>
+                    <p class="font-medium truncate" id="current-user-id">Static User (No DB)</p>
+                </div>
+                <nav class="space-y-1">
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-1v-10a1 1 0 00-1-1h-3m-4 7h4m-4 7h4m-4-7h.01"></path></svg> Dashboard
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Attendance Logs
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2c0-.656-.126-1.283-.356-1.857M9 20H7l-1-1v-6a1 1 0 011-1h10a1 1 0 011 1v6l-1 1h-2"></path></svg> Employees
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors active-link">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14c-4.667 0-7.778 3.333-8 5v1h16v-1c-.222-1.667-3.333-5-8-5z"></path></svg> Resident Check-in
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v1a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h12a1 1 0 011 1v2"></path></svg> Payroll
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m0 10a9 9 0 110-18 9 9 0 010 18z"></path></svg> Reports
+                    </a>
+                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.222.955 3.52 1.096"></path></svg> Settings
+                    </a>
+                </nav>
+            </div>
+            <div class="absolute bottom-0 w-full p-6">
+                <button onclick="console.log('Logout Clicked')" class="flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-colors shadow-lg w-full">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"></path></svg> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle for Mobile -->
+        <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-40 p-2 bg-blue-600 text-white rounded-full shadow-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <!-- 2. MAIN CONTENT AREA -->
+        <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
+
+            <header class="mb-6">
+                <h1 class="text-2xl font-semibold text-gray-800">Resident Management</h1>
+                <p class="text-gray-500 text-sm">View, track, and manage all facility residents and their check-in status (Client-side Prototype).</p>
+            </header>
+            
+            <!-- Management Controls -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-3 md:space-y-0">
+                
+                <!-- Search -->
+                <div class="flex space-x-4 w-full md:w-auto">
+                    <input type="text" id="resident-search" placeholder="Search residents by name or unit..." class="flex-grow md:flex-grow-0 w-full md:w-80 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                </div>
+                
+                <!-- Add New Resident Button -->
+                <button id="add-resident-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors w-full md:w-auto">
+                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Add New Resident
+                </button>
+            </div>
+
+            <!-- Loading Indicator & Error Message (Static - used for messages only) -->
+            <div id="loading-indicator" class="flex justify-center items-center py-10 hidden">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+                <p class="ml-4 text-gray-600">Processing...</p>
+            </div>
+            <div id="error-message" class="text-green-600 bg-green-100 border border-green-300 p-3 rounded-lg hidden">Action Successful!</div>
+
+            <!-- Residents Table / List -->
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check-in (Local)</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="residents-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Residents will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+                <div id="no-residents" class="p-6 text-center text-gray-500 hidden">
+                    No residents found. Click "Add New Resident" to get started!
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL FOR ADD/EDIT RESIDENT -->
+    <div id="resident-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transform scale-95 opacity-0" id="modal-content-wrapper">
+            <div class="p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4" id="modal-title">Add New Resident</h3>
+                <form id="resident-form">
+                    <input type="hidden" id="resident-id">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="resident-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" id="resident-name" required class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                        </div>
+                        <div>
+                            <label for="resident-unit" class="block text-sm font-medium text-gray-700 mb-1">Unit/Room Number</label>
+                            <input type="text" id="resident-unit" required class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                        </div>
+                        <div id="status-field" class="hidden">
+                            <label for="resident-status" class="block text-sm font-medium text-gray-700 mb-1">Initial Status</label>
+                            <select id="resident-status" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
+                                <option value="Checked In">Checked In</option>
+                                <option value="Checked Out">Checked Out</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" id="modal-submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
+                            Save Resident
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL FOR DELETE CONFIRMATION -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-95 opacity-0" id="delete-modal-content">
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Confirm Removal</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to remove <span class="font-bold" id="resident-name-to-delete"></span> from the resident list?</p>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeDeleteModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="confirm-delete-btn" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
+                    Remove
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- STATIC DATA SIMULATION ---
+        let residents = [
+            { id: '1', name: 'Alice Johnson', unit: '101', status: 'Checked In', lastCheckIn: new Date(Date.now() - 3600000).toISOString() },
+            { id: '2', name: 'Bob Smith', unit: '205', status: 'Checked Out', lastCheckIn: new Date(Date.now() - 10800000).toISOString() },
+            { id: '3', name: 'Charlie Brown', unit: '312', status: 'Checked In', lastCheckIn: new Date(Date.now() - 600000).toISOString() },
+            { id: '4', name: 'Diana Prince', unit: '110', status: 'Checked In', lastCheckIn: new Date().toISOString() },
+            { id: '5', name: 'Ethan Hunt', unit: '501', status: 'Checked Out', lastCheckIn: new Date(Date.now() - 7200000).toISOString() },
+        ];
+        
+        let residentToDeleteId = null;
+
+        // --- DOM Elements ---
+        const residentsTableBody = document.getElementById('residents-table-body');
+        const errorMessage = document.getElementById('error-message');
+        const noResidentsMessage = document.getElementById('no-residents');
+        const residentModal = document.getElementById('resident-modal');
+        const modalContentWrapper = document.getElementById('modal-content-wrapper');
+        const residentForm = document.getElementById('resident-form');
+        const residentIdInput = document.getElementById('resident-id');
+        const modalTitle = document.getElementById('modal-title');
+        const residentSearchInput = document.getElementById('resident-search');
+
+        // --- Utility Functions ---
+
+        /** Shows a temporary success/error message in the UI */
+        function showNotification(message, isError = false) {
+            errorMessage.textContent = message;
+            errorMessage.className = isError 
+                ? 'text-red-600 bg-red-100 border border-red-300 p-3 rounded-lg'
+                : 'text-green-600 bg-green-100 border border-green-300 p-3 rounded-lg';
+            errorMessage.classList.remove('hidden');
+
+            setTimeout(() => {
+                errorMessage.classList.add('hidden');
+            }, 3000);
+        }
+
+        /** Formats ISO string to a readable string */
+        function formatTimestamp(isoString) {
+            if (!isoString) return 'N/A';
+            try {
+                return new Date(isoString).toLocaleString();
+            } catch (e) {
+                return 'Invalid Date';
+            }
+        }
+        
+        // --- Modal Control Functions ---
+        function showModal(mode, resident = {}) {
+            residentForm.reset();
+            residentIdInput.value = resident.id || '';
+            
+            if (mode === 'add') {
+                modalTitle.textContent = 'Add New Resident';
+                residentForm.elements['resident-name'].value = '';
+                residentForm.elements['resident-unit'].value = '';
+                document.getElementById('status-field').classList.remove('hidden');
+                residentForm.elements['resident-status'].value = 'Checked In'; 
+            } else if (mode === 'edit') {
+                modalTitle.textContent = `Edit Resident: ${resident.name}`;
+                residentForm.elements['resident-name'].value = resident.name;
+                residentForm.elements['resident-unit'].value = resident.unit;
+                document.getElementById('status-field').classList.add('hidden'); 
+            }
+            
+            residentModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContentWrapper.classList.remove('scale-95', 'opacity-0');
+                modalContentWrapper.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            modalContentWrapper.classList.remove('scale-100', 'opacity-100');
+            modalContentWrapper.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                residentModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showDeleteModal(residentId, residentName) {
+            residentToDeleteId = residentId;
+            document.getElementById('resident-name-to-delete').textContent = residentName;
+            
+            const deleteModal = document.getElementById('delete-modal');
+            const deleteModalContent = document.getElementById('delete-modal-content');
+            
+            deleteModal.classList.remove('hidden');
+            setTimeout(() => {
+                deleteModalContent.classList.remove('scale-95', 'opacity-0');
+                deleteModalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeDeleteModal() {
+            const deleteModal = document.getElementById('delete-modal');
+            const deleteModalContent = document.getElementById('delete-modal-content');
+            
+            deleteModalContent.classList.remove('scale-100', 'opacity-100');
+            deleteModalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                deleteModal.classList.add('hidden');
+                residentToDeleteId = null;
+            }, 300);
+        }
+
+
+        // --- CORE FUNCTIONALITY (Local Simulation) ---
+
+        /** Renders the list of residents based on the provided array */
+        function renderResidents(currentResidents) {
+            residentsTableBody.innerHTML = '';
+            
+            if (currentResidents.length === 0) {
+                noResidentsMessage.classList.remove('hidden');
+                return;
+            }
+            noResidentsMessage.classList.add('hidden');
+
+            currentResidents.forEach(resident => {
+                const isCheckedIn = resident.status === 'Checked In';
+                const statusColor = isCheckedIn ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const checkInOutText = isCheckedIn ? 'Check Out' : 'Check In';
+                const checkInOutClass = isCheckedIn ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600';
+
+                const row = `
+                    <tr data-id="${resident.id}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${resident.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${resident.unit}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                                ${resident.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatTimestamp(resident.lastCheckIn)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                            <button data-action="toggle-status" data-id="${resident.id}" data-status="${resident.status}"
+                                class="text-white font-medium py-1 px-3 rounded-lg text-xs ${checkInOutClass} transition-colors cursor-pointer">
+                                ${checkInOutText}
+                            </button>
+                            <button data-action="edit" data-id="${resident.id}" class="text-blue-600 hover:text-blue-900 cursor-pointer">
+                                View
+                            </button>
+                            <button data-action="delete" data-id="${resident.id}" data-name="${resident.name}" class="text-red-600 hover:text-red-900 cursor-pointer">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                residentsTableBody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+        
+        /** Toggles resident status in the local array */
+        function checkInResident(residentId, currentStatus) {
+            const residentIndex = residents.findIndex(r => r.id === residentId);
+            
+            if (residentIndex > -1) {
+                const newStatus = currentStatus === 'Checked In' ? 'Checked Out' : 'Checked In';
+                
+                residents[residentIndex].status = newStatus;
+                residents[residentIndex].lastCheckIn = new Date().toISOString();
+                
+                filterAndRenderResidents();
+                showNotification(`Status updated: ${residents[residentIndex].name} is now ${newStatus}.`);
+            } else {
+                showNotification('Error: Resident not found.', true);
+            }
+        }
+
+        /** Adds a new resident or updates an existing one locally */
+        function saveResident(event) {
+            event.preventDefault();
+
+            const id = residentIdInput.value;
+            const name = residentForm.elements['resident-name'].value.trim();
+            const unit = residentForm.elements['resident-unit'].value.trim();
+            const status = residentForm.elements['resident-status'].value; 
+
+            if (!name || !unit) return showNotification('Name and Unit are required.', true);
+            
+            closeModal();
+
+            if (id) {
+                // Update existing resident
+                const residentIndex = residents.findIndex(r => r.id === id);
+                if (residentIndex > -1) {
+                    residents[residentIndex].name = name;
+                    residents[residentIndex].unit = unit;
+                    showNotification(`Resident ${name} details updated.`);
+                }
+            } else {
+                // Add new resident
+                const newId = (Math.max(0, ...residents.map(r => parseInt(r.id))) + 1).toString();
+                residents.push({
+                    id: newId,
+                    name: name,
+                    unit: unit,
+                    status: status,
+                    lastCheckIn: new Date().toISOString()
+                });
+                showNotification(`New resident ${name} added.`);
+            }
+            
+            filterAndRenderResidents();
+        }
+
+        /** Deletes a resident locally */
+        function removeResident() {
+            if (!residentToDeleteId) return;
+            
+            const residentName = residents.find(r => r.id === residentToDeleteId)?.name || 'Resident';
+            
+            residents = residents.filter(r => r.id !== residentToDeleteId);
+            
+            closeDeleteModal();
+            filterAndRenderResidents();
+            showNotification(`${residentName} has been successfully removed.`);
+        }
+
+        /** Applies search filter to residents and renders */
+        function filterAndRenderResidents() {
+            // Sort residents by name first
+            residents.sort((a, b) => a.name.localeCompare(b.name)); 
+            
+            const searchTerm = residentSearchInput.value.toLowerCase().trim();
+            
+            const filteredResidents = residents.filter(resident => 
+                resident.name.toLowerCase().includes(searchTerm) || 
+                resident.unit.toLowerCase().includes(searchTerm)
+            );
+
+            renderResidents(filteredResidents);
+        }
+
+
+        // --- Event Listeners and Setup ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // Initial render
+            filterAndRenderResidents();
+
+            // 1. Sidebar Toggle Logic
+            const sidebar = document.getElementById('sidebar');
+            const toggleButton = document.getElementById('sidebar-toggle');
+            const mainContent = document.querySelector('main');
+            toggleButton.addEventListener('click', () => {
+                const isHidden = sidebar.classList.contains('-translate-x-full');
+                if (isHidden) {
+                    sidebar.classList.remove('-translate-x-full');
+                    mainContent.classList.add('opacity-50', 'pointer-events-none');
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                    mainContent.classList.remove('opacity-50', 'pointer-events-none');
+                }
+            });
+            mainContent.addEventListener('click', () => {
+                if (window.innerWidth < 768 && !sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    mainContent.classList.remove('opacity-50', 'pointer-events-none');
+                }
+            });
+
+
+            // 2. Control Handlers
+            document.getElementById('add-resident-btn').addEventListener('click', () => showModal('add'));
+            residentForm.addEventListener('submit', saveResident);
+            document.getElementById('confirm-delete-btn').addEventListener('click', removeResident);
+            residentSearchInput.addEventListener('input', filterAndRenderResidents);
+
+
+            // 3. Delegated table actions (Edit, Delete, Toggle Status)
+            residentsTableBody.addEventListener('click', (event) => {
+                const button = event.target.closest('button');
+                if (!button) return;
+
+                const action = button.getAttribute('data-action');
+                const residentId = button.getAttribute('data-id');
+                const residentName = button.getAttribute('data-name');
+                const residentStatus = button.getAttribute('data-status');
+
+                if (action === 'edit') {
+                    const resident = residents.find(r => r.id === residentId);
+                    if (resident) showModal('edit', resident);
+                } else if (action === 'delete') {
+                    showDeleteModal(residentId, residentName);
+                } else if (action === 'toggle-status') {
+                    checkInResident(residentId, residentStatus);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
