@@ -1,27 +1,21 @@
+<?php
+
+include_once '../shared/components/Sidebar.php';
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Attendance</title>
+    <link rel="stylesheet" href="../utils/styles/global.css">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Use Inter font family -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc; /* Light background for the main content area */
-        }
-        /* Custom dark blue for the sidebar */
-        .sidebar-bg {
-            background-color: #172B4D; /* A deep navy blue, consistent with dashboard */
-        }
-        /* Active link background color */
-        .active-link {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #007bff; /* Light blue border highlight */
-        }
+
         /* Custom darker button color for the new Attendance Now style */
         .btn-dark {
             background-color: #374151; /* A deep slate color */
@@ -36,65 +30,8 @@
     <!-- Main Container -->
     <div class="flex min-h-screen">
 
-        <!-- 1. SIDEBAR NAVIGATION -->
-        <aside class="sidebar-bg w-64 fixed top-0 left-0 h-screen text-white shadow-xl z-10 transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
-            <div class="p-6">
-                <!-- Logo/System Name (Updated to match the simple 'A' circle look) -->
-                <div class="flex items-center space-x-3 mb-8">
-                    <!-- Note: Adjusted placeholder for a cleaner look matching the image's logo -->
-                    <img src="https://placehold.co/40x40/007bff/white?text=A" alt="Logo" class="rounded-full">
-                    <span class="text-xl font-semibold tracking-wide">Attendance System</span>
-                </div>
-
-                <!-- User Greeting -->
-                <div class="mb-10 p-3 bg-white bg-opacity-10 rounded-lg">
-                    <p class="text-sm text-gray-300">Welcome back,</p>
-                    <p class="font-medium">Juan Dela Cruz</p>
-                </div>
-
-                <!-- Navigation Links -->
-                <nav class="space-y-1">
-                    <a href="dashboard_overview.html" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-1v-10a1 1 0 00-1-1h-3m-4 7h4m-4 7h4m-4-7h.01"></path></svg>
-                        Dashboard
-                    </a>
-                    <!-- Attendance Logs is the Active Link -->
-                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors active-link">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Attendance Logs
-                    </a>
-                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2c0-.656-.126-1.283-.356-1.857M9 20H7l-1-1v-6a1 1 0 011-1h10a1 1 0 011 1v6l-1 1h-2"></path></svg>
-                        Employees
-                    </a>
-                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v1a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h12a1 1 0 011 1v2"></path></svg>
-                        Payroll
-                    </a>
-                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m0 10a9 9 0 110-18 9 9 0 010 18z"></path></svg>
-                        Reports
-                    </a>
-                    <a href="#" class="flex items-center p-3 rounded-lg text-sm transition-colors hover:bg-white hover:bg-opacity-10">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.222.955 3.52 1.096"></path></svg>
-                        Settings
-                    </a>
-                </nav>
-            </div>
-
-            <!-- Logout Button (Kept the bold red styling) -->
-            <div class="absolute bottom-0 w-full p-6">
-                <a href="#" class="flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-colors shadow-lg">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"></path></svg>
-                    Logout
-                </a>
-            </div>
-        </aside>
-
-        <!-- Sidebar Toggle for Mobile -->
-        <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-20 p-2 bg-blue-600 text-white rounded-full shadow-lg">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
+        
+        <?=Sidebar("Attendance Logs", null, "./Login_logo1.png")?>
 
         <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
