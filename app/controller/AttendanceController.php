@@ -10,17 +10,57 @@ class AttendanceController {
         $this->attendance = new Attendance($db);
         // $this->fingerprints = new Fingerprints($db);
     }
+    // public function index()
+    // {
+    //     $attendances = $this->attendance::all();
+    //     // $fingerprint = $this->fingerprints::all();
+    //     $lastAttendance = Attendance::query()->orderBy('id', 'DESC')->first();
+    //     $employee = Employee::query()->where('employee_id', $lastAttendance->employee_id)->first();
+    //     $resident = Resident::query()->where("resident_id", $employee->resident_id)->get();
+
+    //     // $employee = null;
+
+    //     // if ($lastAttendance) {
+    //     //     $employee = Employee::query()
+    //     //         ->where("employee_id", $lastAttendance->employee_id)
+    //     //         ->first();
+    //     // }
+    
+    //     return [
+    //         "attendances"=>$attendances,
+    //         "attendancesTodayCount" => $this->getAttendanceCountToday(),
+    //         // "fingerprints"=>$fingerprint,
+    //         "lastAttendee" => $lastAttendance,
+    //         "lastAttendeeEmployee" => $employee,
+    //         "windows"=> $this->windows()
+    //     ];
+    // }
+
     public function index()
     {
-        $attendances = $this->attendance::all();
-        // $fingerprint = $this->fingerprints::all();
+        $attendances = Attendance::all();
+        $lastAttendance = Attendance::query()->orderBy('id', 'DESC')->first();
+
+        $employee = null;
+        $resident = null;
+
+        if ($lastAttendance) {
+            $employee = Employee::query()->where('employee_id', $lastAttendance->employee_id)->first();
+            if ($employee) {
+                $resident = Resident::query()->where('resident_id', $employee->resident_id)->first();
+            }
+        }
+
         return [
-            "attendances"=>$attendances,
+            "attendances" => $attendances,
             "attendancesTodayCount" => $this->getAttendanceCountToday(),
-            // "fingerprints"=>$fingerprint,
-            "windows"=> $this->windows()
+            "lastAttendee" => $lastAttendance,
+            "lastAttendeeEmployee" => $employee,
+            "lastAttendeeResident" => $resident,
+            "windows" => $this->windows(),
         ];
     }
+
 
     public function store($data)
     {
@@ -47,7 +87,7 @@ class AttendanceController {
             http_response_code(422);
             echo json_encode([
                 "success" => false,
-                "error"   => "Employee ID is required"
+                "error"   => "No valid attendance window"
             ]);
             return;
         }

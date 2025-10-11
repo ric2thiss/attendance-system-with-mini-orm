@@ -12,6 +12,8 @@ class QueryBuilder {
     protected $offset = "";
     protected $groupBy = "";
     protected $having = "";
+    protected static $fetchMode = PDO::FETCH_OBJ;
+
 
     public function __construct(PDO $dbconn) {
         $this->db = $dbconn;

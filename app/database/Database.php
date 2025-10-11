@@ -2,7 +2,7 @@
 
 class Database {
     private $host = "localhost";
-    private $db   = "attendance-test";
+    private $db   = "attendance-system";
     private $user = "root";
     private $password = "";
     private $conn;

@@ -1,6 +1,15 @@
 <?php
-
+require_once __DIR__ . "/../bootstrap.php";
 include_once '../shared/components/Sidebar.php';
+
+$attendances = Attendance::query()->table("attendances AS a")
+    ->select("a.id AS attendance_id, a.employee_id, CONCAT(r.first_name, ' ', r.last_name) AS full_name, a.timestamp AS attendance_time, a.window")
+    ->join("employees AS e", "a.employee_id", "=", " e.employee_id")
+    ->join("residents AS r", "e.resident_id", "=", "r.resident_id")
+    ->orderBy("a.timestamp", "DESC")
+    ->get();
+
+// var_dump($attendances);
 
 ?>
 
@@ -50,7 +59,7 @@ include_once '../shared/components/Sidebar.php';
 
                 <!-- Top Action Buttons (Attendance Now & Export) -->
                 <div class="flex justify-end space-x-3 mt-4">
-                    <button class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md text-sm">
+                    <button onclick="window.location.href='biometrics://identify'" class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Attendance Now
                     </button>
@@ -88,7 +97,7 @@ include_once '../shared/components/Sidebar.php';
                         </p>
 
                         <!-- Attendance Button (Dark Blue/Slate Style) -->
-                        <button class="w-full py-3 btn-dark hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors shadow-md text-lg flex items-center justify-center">
+                        <button onclick="window.location.href='biometrics://identify'" class="w-full py-3 btn-dark hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors shadow-md text-lg flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Attendance Now
                         </button>
@@ -149,17 +158,17 @@ include_once '../shared/components/Sidebar.php';
                         <div class="flex-grow grid grid-cols-2 gap-x-6 gap-y-2 border-t md:border-t-0 pt-4 md:pt-0">
                             
                             <div class="col-span-2">
-                                <h3 class="text-xl font-bold text-gray-900">Gorge, Urey G.</h3>
+                                <h3 class="text-xl font-bold text-gray-900" id="name">Gorge, Urey G.</h3>
                                 <p class="text-sm text-gray-500">Employee</p>
                             </div>
 
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Role</p>
-                                <p class="font-medium text-gray-700" id="employee_id">Kagawad</p>
+                                <p class="font-medium text-gray-700" id="role">asd</p>
                             </div>
                             <div class="col-span-1">
-                                <p class="text-xs text-gray-500 uppercase">Latest Log</p>
-                                <p class="font-medium text-gray-700">8:05 AM</p>
+                                <p class="text-xs text-gray-500 uppercase">Employee ID</p>
+                                <p class="font-medium text-gray-700" id="employee_id"></p>
                             </div>
 
                             <div class="col-span-1">
@@ -168,14 +177,14 @@ include_once '../shared/components/Sidebar.php';
                             </div>
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Time Out</p>
-                                <p class="font-medium text-gray-700">-</p>
+                                <p class="font-medium text-gray-700" id="time_out">-</p>
                             </div>
 
                             <!-- Morning In Status -->
                             <div class="col-span-2 mt-2">
                                 <span class="inline-flex items-center text-green-600 font-semibold text-sm">
                                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Morning In
+                                    <span id="window"></span>
                                 </span>
                             </div>
                         </div>
@@ -209,34 +218,36 @@ include_once '../shared/components/Sidebar.php';
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <!-- Sample Log 1 -->
+                                     <?php foreach($attendances as $attendance):?>
                                     <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">EMP001</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">Jane Doe</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">2025-09-28 08:00 AM</td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900"><?=$attendance->employee_id?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700"><?=$attendance->full_name?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500"><?=$attendance->attendance_time?></td>
                                         <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Time In</span>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?=$attendance->window?></span>
                                         </td>
                                     </tr>
+                                    <?php endforeach ?>
                                     
                                     <!-- Sample Log 2 -->
-                                    <tr class="hover:bg-gray-50 transition duration-150">
+                                    <!-- <tr class="hover:bg-gray-50 transition duration-150">
                                         <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">EMP002</td>
                                         <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">John Smith</td>
                                         <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">2025-09-28 05:00 PM</td>
                                         <td class="px-3 py-3 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Time Out</span>
                                         </td>
-                                    </tr>
+                                    </tr> -->
 
                                     <!-- Sample Log 3 -->
-                                    <tr class="hover:bg-gray-50 transition duration-150">
+                                    <!-- <tr class="hover:bg-gray-50 transition duration-150">
                                         <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">EMP003</td>
                                         <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">Urey G. Gorge</td>
                                         <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">2025-09-28 08:05 AM</td>
                                         <td class="px-3 py-3 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Time In</span>
                                         </td>
-                                    </tr>
+                                    </tr> -->
                                 </tbody>
                             </table>
                         </div>
@@ -255,66 +266,83 @@ include_once '../shared/components/Sidebar.php';
 
     <!-- JavaScript for Date, Time, and Sidebar Toggle -->
     <script>
-        // First connect to websocket server
+        // Data table 
 
+       // ✅ Connect to WebSocket server
         const socket = new WebSocket("ws://localhost:8080");
 
+        // --- Handle connection open ---
         socket.onopen = () => {
         console.log("✅ Connected to WebSocket server");
         };
 
-        socket.onmessage = (e) => {
+        // --- Handle incoming messages ---
+        socket.onmessage = (event) => {
         try {
-            const data = JSON.parse(e.data); // ✅ convert string → object
+            const data = JSON.parse(event.data);
+            if (!data) return;
 
-            const lastIndex = data.attendances.length
-            const lastAttendee = data.attendances[lastIndex-1]
+            const { lastAttendee, lastAttendeeEmployee, lastAttendeeResident } = data;
+            if (!lastAttendee) return;
 
-            const employee_id = document.getElementById("employee_id")
-            employee_id.textContent = lastAttendee.employee_id
+            // --- Elements ---
+            const timeInEl = document.getElementById("time_in");
+            const timeOutEl = document.getElementById("time_out");
+            const roleEl = document.getElementById("role");
+            const empIdEl = document.getElementById("employee_id");
+            const nameEl = document.getElementById("name");
+            const windowEl = document.getElementById("window");
 
-            const time_in = document.getElementById("time_in")
-            const created_at = lastAttendee.created_at
-            const date = new Date(created_at.replace(" ", "T"));
-            const time = date.toTimeString().split(" ")[0];
+            // --- Format time ---
+            const date = new Date(lastAttendee.created_at.replace(" ", "T"));
+            const formattedTime = date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            });
 
-            time_in.textContent = time
+            // --- Display Employee Info ---
+            roleEl.textContent = lastAttendeeEmployee?.position || "N/A";
+            empIdEl.textContent = lastAttendee.employee_id || "Unknown";
 
-            console.log(lastAttendee);
-            
+            const firstName = lastAttendeeResident?.first_name || "";
+            const lastName = lastAttendeeResident?.last_name || "";
+            nameEl.textContent = `${firstName} ${lastName}`.trim() || "Unnamed";
 
-            // console.log(msg.attendances)
-            // msg.attendances.forEach(a => {
-            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
-            // });
+            // --- Display Attendance Window ---
+            const windowMap = {
+                morning_in: "Morning In",
+                morning_out: "Morning Out",
+                afternoon_in: "Afternoon In",
+                afternoon_out: "Afternoon Out",
+            };
 
-            // Check what type of message it is
-            // if (msg.type === "attendance") {
-            // console.log("🧾 Attendances:", msg.attendances);
+            const windowText = windowMap[lastAttendee.window] || "Unknown Window";
+            windowEl.textContent = windowText;
 
-            // // Example: loop through them
-            // msg.attendances.forEach(a => {
-            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
-            // });
-            // }
-            // msg.attendances.forEach(a => {
-            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
-            // });
+            // --- Display Time In / Out ---
+            if (windowText.includes("In")) {
+                timeInEl.textContent = formattedTime;
+                timeOutEl.textContent = "-";
+            } else if (windowText.includes("Out")) {
+                timeOutEl.textContent = formattedTime;
+                timeInEl.textContent = "-";
+            } else {
+                timeInEl.textContent = "-";
+                timeOutEl.textContent = "-";
+            }
 
-            // console.log(msg.data.attendances)
-
-            // if (msg.type === "notification") {
-            // console.log("📢 Notification:", msg.message);
-            // }
-
-        } catch (err) {
-            console.error("Error parsing message:", err);
+        } catch (error) {
+            console.error("❌ Error parsing WebSocket message:", error);
         }
         };
 
+        // --- Handle disconnection ---
         socket.onclose = () => {
             console.log("❌ Disconnected from WebSocket server");
         };
+
+
 
         // --- 1. Update Header Date ---
         function updateHeaderDate() {
