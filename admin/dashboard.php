@@ -43,7 +43,7 @@ include_once '../shared/components/Sidebar.php';
     <!-- Main Container -->
     <div class="flex min-h-screen">
 
-        <?=Sidebar("Dashboard", null, "./Login_logo1.png")?>
+        <?=Sidebar("Dashboard", null)?>
 
         <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
@@ -70,7 +70,9 @@ include_once '../shared/components/Sidebar.php';
                         <!-- Clock & Insight -->
                         <div class="flex items-center space-x-2">
                             <!-- Sun/Clock Icon -->
-                            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
                             <span class="text-4xl font-extrabold text-gray-900" id="realtime-clock">
                                 10:28 : 40 AM
                             </span>
@@ -266,6 +268,11 @@ include_once '../shared/components/Sidebar.php';
 
     <!-- JavaScript for Date, Time, Charts, and Sidebar Toggle -->
     <script>
+        const socket = new WebSocket("ws://localhost:8080");
+
+        socket.onopen = () => {
+            console.log("✅ Connected to WebSocket server");
+        };
         // --- 1. Utility Functions ---
         function getDaySuffix(day) {
             if (day > 3 && day < 21) return 'th';

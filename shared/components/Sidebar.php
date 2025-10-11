@@ -18,7 +18,7 @@ function Sidebar($nav = null, $data = [], $logo = null)
         <div class="p-6">
             <!-- Logo/System Name -->
             <div class="flex items-center space-x-3 mb-8">
-                <img src="<?= $logo ?>" alt="Logo" class="rounded-full w-10 h-10">
+                <img src=<?=$logo? $logo : '../utils/img/logo.png'?> alt="Logo" class="rounded-full w-10 h-10">
                 <span class="text-xl font-semibold tracking-wide">Attendance System</span>
             </div>
 

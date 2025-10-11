@@ -31,7 +31,7 @@ include_once '../shared/components/Sidebar.php';
     <div class="flex min-h-screen">
 
         
-        <?=Sidebar("Attendance Logs", null, "./Login_logo1.png")?>
+        <?=Sidebar("Attendance Logs", null)?>
 
         <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
@@ -155,7 +155,7 @@ include_once '../shared/components/Sidebar.php';
 
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Role</p>
-                                <p class="font-medium text-gray-700">Kagawad</p>
+                                <p class="font-medium text-gray-700" id="employee_id">Kagawad</p>
                             </div>
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Latest Log</p>
@@ -164,7 +164,7 @@ include_once '../shared/components/Sidebar.php';
 
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Time In</p>
-                                <p class="font-medium text-gray-700">8:05 AM</p>
+                                <p class="font-medium text-gray-700" id="time_in">8:05 AM</p>
                             </div>
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Time Out</p>
@@ -255,6 +255,67 @@ include_once '../shared/components/Sidebar.php';
 
     <!-- JavaScript for Date, Time, and Sidebar Toggle -->
     <script>
+        // First connect to websocket server
+
+        const socket = new WebSocket("ws://localhost:8080");
+
+        socket.onopen = () => {
+        console.log("✅ Connected to WebSocket server");
+        };
+
+        socket.onmessage = (e) => {
+        try {
+            const data = JSON.parse(e.data); // ✅ convert string → object
+
+            const lastIndex = data.attendances.length
+            const lastAttendee = data.attendances[lastIndex-1]
+
+            const employee_id = document.getElementById("employee_id")
+            employee_id.textContent = lastAttendee.employee_id
+
+            const time_in = document.getElementById("time_in")
+            const created_at = lastAttendee.created_at
+            const date = new Date(created_at.replace(" ", "T"));
+            const time = date.toTimeString().split(" ")[0];
+
+            time_in.textContent = time
+
+            console.log(lastAttendee);
+            
+
+            // console.log(msg.attendances)
+            // msg.attendances.forEach(a => {
+            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
+            // });
+
+            // Check what type of message it is
+            // if (msg.type === "attendance") {
+            // console.log("🧾 Attendances:", msg.attendances);
+
+            // // Example: loop through them
+            // msg.attendances.forEach(a => {
+            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
+            // });
+            // }
+            // msg.attendances.forEach(a => {
+            //     console.log(`Employee ${a.employee_id} logged ${a.window} at ${a.timestamp}`);
+            // });
+
+            // console.log(msg.data.attendances)
+
+            // if (msg.type === "notification") {
+            // console.log("📢 Notification:", msg.message);
+            // }
+
+        } catch (err) {
+            console.error("Error parsing message:", err);
+        }
+        };
+
+        socket.onclose = () => {
+            console.log("❌ Disconnected from WebSocket server");
+        };
+
         // --- 1. Update Header Date ---
         function updateHeaderDate() {
             const now = new Date();

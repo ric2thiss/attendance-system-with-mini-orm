@@ -46,7 +46,7 @@ include_once '../shared/components/Sidebar.php';
     <!-- Main Container -->
     <div class="flex min-h-screen">
 
-        <?=Sidebar("Employees", null, "./Login_logo1.png")?>
+        <?=Sidebar("Employees", null)?>
 
         <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
