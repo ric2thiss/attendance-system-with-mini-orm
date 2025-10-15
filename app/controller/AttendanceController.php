@@ -57,7 +57,7 @@ class AttendanceController {
             "lastAttendee" => $lastAttendance,
             "lastAttendeeEmployee" => $employee,
             "lastAttendeeResident" => $resident,
-            "windows" => $this->windows(),
+            // "windows" => $this->windows(),
         ];
     }
 
@@ -186,9 +186,18 @@ class AttendanceController {
 
     function getAttendanceCountToday()
     {
-        return $this->attendance
+        $result =  $this->attendance
+            // ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
+            // ->count();
+            // ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
+            // ->select("employee_id")
+            // ->groupBy("employee_id")
+            // ->count();
+            ->select("COUNT(DISTINCT employee_id) as Total")
             ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
-            ->count();
+            ->first();
+
+        return $result->Total;
     }
 
 

@@ -144,13 +144,13 @@ $attendances = Attendance::query()->table("attendances AS a")
                         
                         <!-- Fingerprint/Photo Area -->
                         <div class="flex flex-shrink-0 space-x-4 mb-4 md:mb-0 md:mr-6">
-                            <div class="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs flex-col p-2">
+                            <!-- <div class="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs flex-col p-2"> -->
                                 <!-- Mock Fingerprint Icon -->
-                                <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.314-2.686 6-6 6s-6-2.686-6-6 2.686-6 6-6c3.314 0 6 2.686 6 6zm0 0V3m0 0V1M6 17v4m0 0H3m3 0h6m-6-4H3m9 4v4m0 0H9m3 0h3"></path></svg>
+                                <!-- <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.314-2.686 6-6 6s-6-2.686-6-6 2.686-6 6-6c3.314 0 6 2.686 6 6zm0 0V3m0 0V1M6 17v4m0 0H3m3 0h6m-6-4H3m9 4v4m0 0H9m3 0h3"></path></svg>
                                 FINGERPRINT
-                            </div>
-                            <div class="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                                PHOTO
+                            </div> -->
+                            <div class="w-24 h-100 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                                <img src="./logo.png" alt="">
                             </div>
                         </div>
 

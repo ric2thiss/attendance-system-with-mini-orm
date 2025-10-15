@@ -56,12 +56,27 @@ switch ($resource) {
         
         break;
     
-    case 'check':
-        if($method === "GET")
-        {
+    case 'employees':
+       if ($method === "GET") {
+            $headers = getallheaders();
+            $apiKey = $headers["x-api-key"] ?? null;
 
-            echo "Fingerprints";
+            if (!$apiKey) {
+                http_response_code(400);
+                echo json_encode(["error" => "Missing API key"]);
+                return;
+            }
+
+            if (constant("API_KEY") !== $apiKey) {
+                http_response_code(401);
+                echo json_encode(["error" => "Invalid API key"]);
+                return;
+            }
+
+            $employeesController = new EmployeeController();
+            echo json_encode($employeesController->getAllEmployees());
         }
+
         
         break;
     
