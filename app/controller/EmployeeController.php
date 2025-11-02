@@ -18,18 +18,30 @@ class EmployeeController {
             "residents.suffix",
             "residents.gender",
             "employees.employee_id",
-            "employees.position"
+            "employees.position",
+            "employee_current_activity.current_activity as activity_name"
         )
         ->join("residents", "employees.resident_id", "=", "residents.resident_id")
+        ->leftJoin("employee_activity","employees.employee_id","=","employee_activity.employee_id")
+        ->leftJoin("employee_current_activity","employee_activity.employee_current_activity_id","=","employee_current_activity.employee_current_activity_id")
         ->get();
         $employeeCounts = $this->getAllEmployeeCount();
 
         return ["employees"=>$employees, "employeeCounts" => $employeeCounts];
     }
     
-    private function getAllEmployeeCount() {
+    private function getAllEmployeeCount()
+    {
         return Employee::query()->table("employees")
         ->select("COUNT(*) as count")
         ->get();
     }
+
+    // public function getEmployeeCurrentActivity()
+    // {
+    //     $employees = Employee::query()
+    //     ->join("employee_activity", "")
+    //     return;
+    // }
+
 }

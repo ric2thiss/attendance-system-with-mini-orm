@@ -61,9 +61,19 @@ class AttendanceController {
         ];
     }
 
+    public function getAttendanceBetween($from, $to)
+    {
+        $attendances = Attendance::query()
+        // ->join("residents", "employees")
+        ->select()
+        ->get();
+    }
+
+
 
     public function store($data)
     {
+        
         // Validation
         if (!isset($data["employee_id"]) || empty($data["employee_id"])) {
             http_response_code(422);

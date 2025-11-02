@@ -15,6 +15,9 @@ const studentsRoute = require('./routes/students')
 
 app.use('/students', studentsRoute)
 
+app.get('/keneth', (req,res)=>{
+    res.send("HELLO WORLD")
+})
 // Error handler
 app.use((err, req, res, next) => {
     if(err.message === "Access Denied") {

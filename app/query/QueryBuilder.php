@@ -129,6 +129,10 @@ class QueryBuilder {
         return $this;
     }
 
+    public function leftJoin($table, $first, $operator, $second) {
+        return $this->join($table, $first, $operator, $second, "LEFT");
+    }
+
     public function orderBy($column, $direction = "ASC") {
         $this->orderBy = "ORDER BY $column $direction";
         return $this;

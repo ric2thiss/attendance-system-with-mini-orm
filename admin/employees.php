@@ -1,6 +1,10 @@
 <?php
-
+require_once __DIR__ . "/../bootstrap.php";
 include_once '../shared/components/Sidebar.php';
+
+// For employee table
+$employeesData = (new EmployeeController())->getAllEmployees();
+// $employeeCurrentActivities = (new EmployeeController())->getEmployeeCurrentActivity();
 
 ?>
 <!DOCTYPE html>
@@ -9,24 +13,12 @@ include_once '../shared/components/Sidebar.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Directory</title>
+    <!-- Load global css -->
+    <link rel="stylesheet" href="../utils/styles/global.css">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Use Inter font family and custom styles from the dashboard -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc; /* Light background for the main content area */
-        }
-        /* Custom dark blue for the sidebar */
-        .sidebar-bg {
-            background-color: #172B4D; /* A deep navy blue */
-        }
-        /* Active link background color (Employees is now active) */
-        .active-link {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #007bff; /* Light blue border highlight */
-        }
         /* Style for the action buttons */
         .btn-primary {
             background-color: #007bff; /* Primary blue */
@@ -93,64 +85,35 @@ include_once '../shared/components/Sidebar.php';
                                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
+
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <!-- Employee Row 1 -->
+                            <?php foreach ($employeesData["employees"] as $employee): ?>
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">EMP-001</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Alice Johnson</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Engineering</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Software Developer</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <?= $employee->employee_id ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    <?= $employee->first_name . ' ' . $employee->last_name ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    BARANGAY
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    <?= $employee->position ?>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                     <?= $employee->activity_name ? $employee->activity_name : "Office"; ?>
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
                                     <button class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</button>
                                     <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
                                 </td>
                             </tr>
-                            <!-- Employee Row 2 -->
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">EMP-002</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Bob Smith</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Marketing</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Marketing Manager</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">On Leave</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</button>
-                                    <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
-                                </td>
-                            </tr>
-                            <!-- Employee Row 3 -->
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">EMP-003</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Charlie Brown</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Operations</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Team Lead</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</button>
-                                    <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
-                                </td>
-                            </tr>
-                            <!-- Employee Row 4 -->
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">EMP-004</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Diana Prince</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">HR</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">HR Specialist</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Terminated</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</button>
-                                    <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
-                                </td>
-                            </tr>
+                            <?php endforeach; ?>
                         </tbody>
+
                     </table>
                 </div>
 
