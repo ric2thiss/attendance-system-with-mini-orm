@@ -111,6 +111,26 @@ try {
             break;
 
 
+        case "test":
+            $employeesController = new EmployeeController();
+
+            // Example test data
+            $data = [
+                "resident_id" => 1,
+                "position" => "Manager",
+                "department" => "HR"
+            ];
+
+            // Run the store method
+            $employeesController->store($data);
+
+            break;
+        
+        // case "residents":
+        //     $residents = (new ResidentController())->getAllResident();
+
+        //     print_r($residents);
+        //     break;
         /**
          * ---------------------------------------------------------------
          * UNKNOWN QUERY

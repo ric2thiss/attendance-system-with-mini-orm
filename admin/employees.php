@@ -4,7 +4,10 @@ include_once '../shared/components/Sidebar.php';
 
 // For employee table
 $employeesData = (new EmployeeController())->getAllEmployees();
+
+$residents = (new ResidentController())->getAllResident();
 // $employeeCurrentActivities = (new EmployeeController())->getEmployeeCurrentActivity();
+$departmentLists = (new DepartmentController())->getDepartmentLists();
 
 ?>
 <!DOCTYPE html>
@@ -66,7 +69,7 @@ $employeesData = (new EmployeeController())->getAllEmployees();
                     </div>
 
                     <!-- Add Employee Button -->
-                    <button class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
+                    <button class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center" id="openAddEmployeeModal">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Add New Employee
                     </button>
@@ -133,6 +136,80 @@ $employeesData = (new EmployeeController())->getAllEmployees();
             </div>
 
 
+            
+                <!--Modal Here-->
+
+                <div id="addEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
+
+                    <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform sm:my-8">
+
+                            <div class="flex items-start justify-between p-5 border-b border-gray-200">
+                                <h3 class="text-xl font-semibold text-gray-800" id="modal-title">
+                                    Add New Employee
+                                </h3>
+                                <button type="button" class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="document.getElementById('addEmployeeModal').classList.add('hidden')">
+                                    <span class="sr-only">Close modal</span>
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+
+                            <div class="p-6 space-y-4">
+                                <p class="text-sm text-gray-500">Fill out the details below to add a new employee to the directory.</p>
+                                
+                                <form action="#" method="POST" class="space-y-4">
+                                    <!-- <div>
+                                        <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                                        <input type="text" name="firstName" id="firstName" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div> -->
+
+                                    <div>
+                                        <label for="department" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
+                                        <select id="department" name="department" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Resident</option>
+                                            <?php foreach ($residents as $resident): ?>
+                                                <option value="<?= $resident->resident_id ?>"><?= $resident->first_name ?> <?= $resident->last_name ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- <div>
+                                        <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                                        <input type="text" name="lastName" id="lastName" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div> -->
+                                    <div>
+                                        <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+                                        <select id="department" name="department" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Department</option>
+                                            <?php foreach($departmentLists as $departmentList):?>
+                                                <option value="<?=$departmentList->department_id?>"><?=$departmentList->department_name?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="position" class="block text-sm font-medium text-gray-700">Position</label>
+                                        <input type="text" name="position" id="position" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
+                                <button type="button" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none" onclick="document.getElementById('addEmployeeModal').classList.add('hidden')">
+                                    Cancel
+                                </button>
+                                <button type="submit" form="addEmployeeForm" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
+                                    Save Employee
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- End modal -->
+
+
         </main>
     </div>
 
@@ -164,5 +241,42 @@ $employeesData = (new EmployeeController())->getAllEmployees();
             }
         });
     </script>
+
+    <script>
+    // ... (Your existing sidebar toggle script) ...
+
+    // --- Modal Toggle Logic ---
+    const openModalButton = document.getElementById('openAddEmployeeModal');
+    const modal = document.getElementById('addEmployeeModal');
+
+    // Function to open the modal
+    if (openModalButton) {
+        openModalButton.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+            // Optional: Focus the first input for accessibility
+            document.getElementById('firstName').focus();
+        });
+    }
+
+    // Function to close the modal (already handled by close buttons, but good for backdrop)
+    const closeModal = () => {
+        modal.classList.add('hidden');
+    }
+
+    // Close when clicking the backdrop (outside the modal content)
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'addEmployeeModal') {
+            closeModal();
+        }
+    });
+
+    // Close when pressing the ESC key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+
+</script>
 </body>
 </html>

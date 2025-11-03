@@ -5,6 +5,34 @@ class EmployeeController {
 
     public function store($data)
     {
+        if (!$data) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Empty metadata"
+            ]);
+            return;
+        }
+
+        if(!$data["employee_id"] || !$data["resident_id"] || !$data["position"] || !$data["hired_date"]) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Incomplete input data"
+            ]);
+            return;
+        }
+
+        try {
+            (new Employee())->create($data);
+        } catch (Exception $err) {
+            http_response_code(500);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Something went wrong - $err"
+            ]);
+            return;
+        }
         
     }
     public function getAllEmployees()
@@ -19,11 +47,11 @@ class EmployeeController {
             "residents.gender",
             "employees.employee_id",
             "employees.position",
-            "employee_current_activity.current_activity as activity_name"
+            "activity_types.activity_name",
         )
         ->join("residents", "employees.resident_id", "=", "residents.resident_id")
         ->leftJoin("employee_activity","employees.employee_id","=","employee_activity.employee_id")
-        ->leftJoin("employee_current_activity","employee_activity.employee_current_activity_id","=","employee_current_activity.employee_current_activity_id")
+        ->leftJoin("activity_types","employee_activity.activity_types_id","=","activity_types.activity_types_id")
         ->get();
         $employeeCounts = $this->getAllEmployeeCount();
 
@@ -32,7 +60,7 @@ class EmployeeController {
     
     private function getAllEmployeeCount()
     {
-        return Employee::query()->table("employees")
+        return Employee::query()
         ->select("COUNT(*) as count")
         ->get();
     }

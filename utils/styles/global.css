@@ -12,3 +12,7 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
     border-left: 4px solid #007bff; /* Light blue border highlight */
 }
+/* Custom Modal Styling */
+.modal {
+    transition: opacity 0.25s ease-in-out;
+}
