@@ -9,6 +9,12 @@ $residents = (new ResidentController())->getAllResident();
 // $employeeCurrentActivities = (new EmployeeController())->getEmployeeCurrentActivity();
 $departmentLists = (new DepartmentController())->getDepartmentLists();
 
+$positions = (new PositionController())->getAllPosition();
+
+// foreach($positions as $position){
+//     echo $position->position_name;
+// }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -102,7 +108,7 @@ $departmentLists = (new DepartmentController())->getDepartmentLists();
                                     BARANGAY
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    <?= $employee->position ?>
+                                    <?= $employee->position_name ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -158,29 +164,24 @@ $departmentLists = (new DepartmentController())->getDepartmentLists();
                             <div class="p-6 space-y-4">
                                 <p class="text-sm text-gray-500">Fill out the details below to add a new employee to the directory.</p>
                                 
-                                <form action="#" method="POST" class="space-y-4">
-                                    <!-- <div>
-                                        <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
-                                        <input type="text" name="firstName" id="firstName" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div> -->
+                                <form class="space-y-4">
+                                    <div>
+                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
+                                        <input type="text" name="employee_id" id="employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
 
                                     <div>
-                                        <label for="department" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
-                                        <select id="department" name="department" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label for="resident_id" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
+                                        <select id="resident_id" name="resident_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option selected disabled>Select Resident</option>
                                             <?php foreach ($residents as $resident): ?>
                                                 <option value="<?= $resident->resident_id ?>"><?= $resident->first_name ?> <?= $resident->last_name ?></option>
                                             <?php endforeach ?>
                                         </select>
                                     </div>
-
-                                    <!-- <div>
-                                        <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-                                        <input type="text" name="lastName" id="lastName" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div> -->
                                     <div>
-                                        <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
-                                        <select id="department" name="department" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
+                                        <select id="department_id" name="department_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option selected disabled>Select Department</option>
                                             <?php foreach($departmentLists as $departmentList):?>
                                                 <option value="<?=$departmentList->department_id?>"><?=$departmentList->department_name?></option>
@@ -188,8 +189,18 @@ $departmentLists = (new DepartmentController())->getDepartmentLists();
                                         </select>
                                     </div>
                                     <div>
-                                        <label for="position" class="block text-sm font-medium text-gray-700">Position</label>
-                                        <input type="text" name="position" id="position" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label for="position_id" class="block text-sm font-medium text-gray-700">Position</label>
+                                        <select id="position_id" name="position_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Position</option>
+                                             <?php foreach($positions as $position):?>
+                                                <option value="<?=$position->position_id;?>"><?=$position->position_name;?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="hired_date" class="block text-sm font-medium text-gray-700">Hired Date</label>
+                                        <input type="text" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                 </form>
                             </div>
@@ -198,7 +209,7 @@ $departmentLists = (new DepartmentController())->getDepartmentLists();
                                 <button type="button" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none" onclick="document.getElementById('addEmployeeModal').classList.add('hidden')">
                                     Cancel
                                 </button>
-                                <button type="submit" form="addEmployeeForm" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
+                                <button type="submit" id="addEmployeeBtn" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
                                     Save Employee
                                 </button>
                             </div>
@@ -215,6 +226,58 @@ $departmentLists = (new DepartmentController())->getDepartmentLists();
 
     <!-- JavaScript for Sidebar Toggle -->
     <script>
+        const addEmployeeBtn = document.getElementById("addEmployeeBtn");
+
+        const URL = "http://localhost/attendance-system/api/v1/request.php?query=employees";
+
+        const handleAddEmployee = async () => {
+            const employee_id = document.getElementById("employee_id").value;
+            const resident_id = document.getElementById("resident_id").value;
+            const department_id = document.getElementById("department_id").value;
+            const position_id = document.getElementById("position_id").value;
+            const hired_date = document.getElementById("hired_date").value;
+
+            if (!resident_id || !department_id || !position_id || !hired_date) {
+                alert("Please fill out all required fields.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("employee_id", employee_id);
+            formData.append("resident_id", resident_id);
+            formData.append("department_id", department_id);
+            formData.append("position_id", position_id);
+            formData.append("hired_date", hired_date);
+
+            try {
+                const response = await fetch(URL, {
+                    method: "POST",
+                    headers: {
+                        "x-api-key": "HELLOWORLD"
+                        // ⚠️ Do NOT include "Content-Type" when sending FormData
+                        // The browser will set it automatically with proper boundary
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message || "Employee added successfully!");
+                    document.getElementById("employeeForm")?.reset();
+                } else {
+                    alert(data.error || "Failed to add employee.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Something went wrong. Please try again later.");
+            }
+        };
+
+        addEmployeeBtn.addEventListener("click", handleAddEmployee);
+
+
+
         // --- Mobile Sidebar Toggle Logic ---
         const sidebar = document.getElementById('sidebar');
         const toggleButton = document.getElementById('sidebar-toggle');

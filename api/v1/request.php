@@ -58,32 +58,57 @@ try {
          * ---------------------------------------------------------------
          */
         case "employees":
-            validateApiKey();
+
+            // validateApiKey();
 
             $employeesController = new EmployeeController();
 
-            if ($filter === "all") {
-                $result = $employeesController->getAllEmployees();
-                jsonResponse($result);
-            } 
-            // elseif ($filter === "active") {
-            //     $result = $employeesController->getActiveEmployees();
-            //     jsonResponse($result);
-            // } 
-            // elseif ($filter === "inactive") {
-            //     $result = $employeesController->getInactiveEmployees();
-            //     jsonResponse($result);
-            // } 
-            else {
-                jsonResponse(["error" => "Invalid or missing filter parameter"], 400);
+            if($_SERVER["REQUEST_METHOD"] === "GET") {
+
+                if ($filter === "all"){
+                    $result = $employeesController->getAllEmployees();
+                    jsonResponse($result);
+                } 
             }
+
+
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $input = file_get_contents("php://input");
+            $data = json_decode($input, true);
+
+            if (!$data) {
+                $data = $_POST;
+            }
+
+            if (empty($data)) {
+                jsonResponse(["error" => "Invalid or missing data"], 400);
+            }
+
+            try {
+                $result = $employeesController->store($data);
+
+                $status = $result["status"] ?? 200;
+                unset($result["status"]); 
+                jsonResponse($result, $status);
+
+            } catch (Exception $err) {
+                jsonResponse([
+                    "success" => false,
+                    "error"   => "Something went wrong - " . $err->getMessage()
+                ], 500);
+            }
+        }
+
+
+
+            jsonResponse(["error" => "Bad request"], 400);
 
             break;
 
 
         /**
          * ---------------------------------------------------------------
-         * ATTENDANCE API (example)
+         * ATTENDANCE API Endpoint (example)
          * ---------------------------------------------------------------
          */
         case "attendance":
@@ -110,7 +135,11 @@ try {
 
             break;
 
-
+        /**
+         * ---------------------------------------------------------------
+         * TEST API Endpoint (example)
+         * ---------------------------------------------------------------
+         */
         case "test":
             $employeesController = new EmployeeController();
 
@@ -146,5 +175,4 @@ try {
         "message" => $e->getMessage()
     ], 500);
 }
-/*  */
-/*  */
+

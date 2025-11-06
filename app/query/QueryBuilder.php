@@ -194,9 +194,15 @@ class QueryBuilder {
         $sql = "INSERT INTO {$this->table} ($columns) VALUES ($placeholders)";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_values($data));
+        $success = $stmt->execute(array_values($data));
 
-        return $this->db->lastInsertId();
+        // Return true on success (or lastInsertId if available)
+        if ($success) {
+            $id = $this->db->lastInsertId();
+            return $id ? $id : true; // true if no auto-increment ID
+        }
+
+        return false;
     }
 
     // public function update(array $data) {

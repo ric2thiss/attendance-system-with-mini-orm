@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../app/models/Model.php';
 
 class Employee extends Model {
     protected $table = "employees";
-    protected $fillable = ["employee_id", "resident_id", "position", "hired_date"];
+    protected $fillable = ["employee_id", "resident_id", "position_id", "hired_date"];
 
     // public function resident() {
     //     return $this->belongsTo(Resident::class, 'resident_id');
