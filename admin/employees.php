@@ -116,7 +116,7 @@ $positions = (new PositionController())->getAllPosition();
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors">Edit</button>
+                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors editBtn" data-id="<?= $employee->employee_id ?>">Edit</button>
                                     <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
                                 </td>
                             </tr>
@@ -143,7 +143,7 @@ $positions = (new PositionController())->getAllPosition();
 
 
             
-                <!--Modal Here-->
+                <!--Modal : Create Employee-->
 
                 <div id="addEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
@@ -200,7 +200,7 @@ $positions = (new PositionController())->getAllPosition();
 
                                     <div>
                                         <label for="hired_date" class="block text-sm font-medium text-gray-700">Hired Date</label>
-                                        <input type="text" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="date" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
                                     </div>
                                 </form>
                             </div>
@@ -220,6 +220,99 @@ $positions = (new PositionController())->getAllPosition();
 
                 <!-- End modal -->
 
+                <!-- Modal : Edit Employee -->
+
+                 <div id="editEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
+
+                    <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform sm:my-8">
+
+                            <div class="flex items-start justify-between p-5 border-b border-gray-200">
+                                <h3 class="text-xl font-semibold text-gray-800" id="modal-title">
+                                    Employee Record
+                                </h3>
+                                <button type="button" class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="document.getElementById('editEmployeeModal').classList.add('hidden')">
+                                    <span class="sr-only">Close modal</span>
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+
+                            <div class="p-6 space-y-4">
+                                <p class="text-sm text-gray-500">Employee Profile</p>
+                                <div class="content">
+                                    <div>
+                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
+                                        <input type="text" name="employee_id" id="edit_modal_employee_id" disabled class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="flex gap-2 mt-2">
+                                        <div>
+                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">First Name</label>
+                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">Last Name</label>
+                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                
+                                <!-- <form class="space-y-4">
+                                    <div>
+                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
+                                        <input type="text" name="employee_id" id="employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+
+                                    <div>
+                                        <label for="resident_id" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
+                                        <select id="resident_id" name="resident_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Resident</option>
+                                            <?php foreach ($residents as $resident): ?>
+                                                <option value="<?= $resident->resident_id ?>"><?= $resident->first_name ?> <?= $resident->last_name ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
+                                        <select id="department_id" name="department_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Department</option>
+                                            <?php foreach($departmentLists as $departmentList):?>
+                                                <option value="<?=$departmentList->department_id?>"><?=$departmentList->department_name?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="position_id" class="block text-sm font-medium text-gray-700">Position</label>
+                                        <select id="position_id" name="position_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                            <option selected disabled>Select Position</option>
+                                             <?php foreach($positions as $position):?>
+                                                <option value="<?=$position->position_id;?>"><?=$position->position_name;?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="hired_date" class="block text-sm font-medium text-gray-700">Hired Date</label>
+                                        <input type="date" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div> -->
+                                </form>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
+                                <button type="button" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none" onclick="document.getElementById('editEmployeeModal').classList.add('hidden')">
+                                    Cancel
+                                </button>
+                                <button type="submit" id="addEmployeeBtn" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
+                                    Save Employee
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- End modal -->
 
         </main>
     </div>
@@ -253,9 +346,8 @@ $positions = (new PositionController())->getAllPosition();
                 const response = await fetch(URL, {
                     method: "POST",
                     headers: {
-                        "x-api-key": "HELLOWORLD"
-                        // ⚠️ Do NOT include "Content-Type" when sending FormData
-                        // The browser will set it automatically with proper boundary
+                        "x-api-key": "HELLOWORLD",
+                        "Content-Type" :"application/json"
                     },
                     body: formData
                 });
@@ -275,6 +367,19 @@ $positions = (new PositionController())->getAllPosition();
         };
 
         addEmployeeBtn.addEventListener("click", handleAddEmployee);
+
+
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById("editEmployeeModal")
+            if (e.target.classList.contains('editBtn')) {
+                const employeeId = e.target.dataset.id;
+                modal.classList.remove("hidden")
+                
+                document.getElementById("edit_modal_employee_id").value = employeeId
+
+            }
+        });
+
 
 
 
@@ -317,7 +422,7 @@ $positions = (new PositionController())->getAllPosition();
         openModalButton.addEventListener('click', () => {
             modal.classList.remove('hidden');
             // Optional: Focus the first input for accessibility
-            document.getElementById('firstName').focus();
+            // document.getElementById('firstName').focus();
         });
     }
 
