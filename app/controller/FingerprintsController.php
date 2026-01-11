@@ -1,17 +1,17 @@
 <?php
 
 class FingerprintsController {
-    protected $fingerprints;
+    protected $fingerprintsRepository;
 
     public function __construct()
     {
         $db = (new Database())->connect();
-        $this->fingerprints = new Fingerprints($db);
+        $this->fingerprintsRepository = new FingerprintsRepository($db);
     }
 
     public function index() 
     {
-        return $this->fingerprints->all(["employee_id", "template"]);
+        return $this->fingerprintsRepository->getAllLimited();
     }
     
     public function enroll($data)
@@ -37,15 +37,13 @@ class FingerprintsController {
             return;
         }
 
-        $exists = $this->fingerprints->where("employee_id", $data["employee_id"])->first();
-
-        if($exists) {
+        if($this->fingerprintsRepository->existsByEmployeeId($data["employee_id"])) {
             http_response_code(409);
             echo json_encode(["message"=>"Employee already enrolled"]);
             return;
         }
 
-        Fingerprints::create([
+        $this->fingerprintsRepository->create([
             "employee_id" => $data["employee_id"],
             "template"    => $data["template"]
         ]);

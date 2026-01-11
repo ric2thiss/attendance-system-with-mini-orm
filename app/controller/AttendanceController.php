@@ -1,14 +1,16 @@
 <?php
 
 class AttendanceController {
-    protected $attendance;
-    // protected $fingerprints;
+    protected $attendanceRepository;
+    protected $employeeRepository;
+    protected $residentRepository;
 
     public function __construct()
     {
         $db = (new Database())->connect();
-        $this->attendance = new Attendance($db);
-        // $this->fingerprints = new Fingerprints($db);
+        $this->attendanceRepository = new AttendanceRepository($db);
+        $this->employeeRepository = new EmployeeRepository($db);
+        $this->residentRepository = new ResidentRepository($db);
     }
     // public function index()
     // {
@@ -38,16 +40,19 @@ class AttendanceController {
 
     public function index()
     {
-        $attendances = Attendance::all();
-        $lastAttendance = Attendance::query()->orderBy('id', 'DESC')->first();
+        $attendances = $this->attendanceRepository->findAll();
+        $lastAttendance = $this->attendanceRepository->getLast();
 
         $employee = null;
         $resident = null;
 
         if ($lastAttendance) {
-            $employee = Employee::query()->where('employee_id', $lastAttendance->employee_id)->first();
+            $employeeId = is_object($lastAttendance) ? $lastAttendance->employee_id : $lastAttendance['employee_id'];
+            $employee = $this->employeeRepository->getWithPosition($employeeId);
+            
             if ($employee) {
-                $resident = Resident::query()->where('resident_id', $employee->resident_id)->first();
+                $residentId = is_object($employee) ? $employee->resident_id : $employee['resident_id'];
+                $resident = $this->residentRepository->findById($residentId);
             }
         }
 
@@ -63,10 +68,7 @@ class AttendanceController {
 
     public function getAttendanceBetween($from, $to)
     {
-        $attendances = Attendance::query()
-        // ->join("residents", "employees")
-        ->select()
-        ->get();
+        return $this->attendanceRepository->getBetween($from, $to);
     }
 
 
@@ -120,13 +122,7 @@ class AttendanceController {
         }
 
         // Check if already logged today
-        $existing = $this->attendance->where([
-            "employee_id" => $data["employee_id"],
-            "window"      => $data["window"],
-        ])->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
-        ->first();
-
-        if ($existing) {
+        if ($this->attendanceRepository->existsTodayForWindow($data["employee_id"], $data["window"])) {
             http_response_code(409); // Conflict
             echo json_encode([
                 "success" => false,
@@ -137,7 +133,7 @@ class AttendanceController {
 
         // 5. Save attendance
         try {
-            $saved = $this->attendance->create($data);
+            $saved = $this->attendanceRepository->create($data);
 
             http_response_code(201);
             echo json_encode([
@@ -183,7 +179,7 @@ class AttendanceController {
             [
                 'label' => 'afternoon_out',
                 'start' => '16:00:00',
-                'end' => '17:30:00',
+                'end' => '18:30:00',
             ],
         ];
     }
@@ -196,18 +192,20 @@ class AttendanceController {
 
     function getAttendanceCountToday()
     {
-        $result =  $this->attendance
-            // ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
-            // ->count();
-            // ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
-            // ->select("employee_id")
-            // ->groupBy("employee_id")
-            // ->count();
-            ->select("COUNT(DISTINCT employee_id) as Total")
-            ->whereRaw("DATE(created_at) = ?", [date("Y-m-d")])
-            ->first();
+        return $this->attendanceRepository->getCountToday();
+    }
 
-        return $result->Total;
+    /**
+     * Get paginated attendance records with search
+     *
+     * @param int $page Current page number
+     * @param int $perPage Records per page
+     * @param string $searchQuery Search term (optional)
+     * @return array
+     */
+    public function getPaginatedAttendances($page = 1, $perPage = 10, $searchQuery = '')
+    {
+        return $this->attendanceRepository->getPaginated($page, $perPage, $searchQuery);
     }
 
 

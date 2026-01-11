@@ -14,6 +14,13 @@ class Model extends QueryBuilder
     protected $table;
 
     /**
+     * Primary key column name
+     *
+     * @var string
+     */
+    protected $primaryKey = 'id';
+
+    /**
      * Mass assignable fields
      *
      * @var array
@@ -100,14 +107,25 @@ class Model extends QueryBuilder
     }
 
     /**
-     * Find row by primary key (id)
+     * Get primary key column name
+     *
+     * @return string
+     */
+    public static function getPrimaryKey(): string
+    {
+        return (new static(static::$pdo))->primaryKey;
+    }
+
+    /**
+     * Find row by primary key
      *
      * @param mixed $id
-     * @return array|null
+     * @return array|null|object
      */
     public static function find($id)
     {
-        return static::query()->where("id", $id)->first();
+        $instance = new static(static::$pdo);
+        return static::query()->where($instance->primaryKey, $id)->first();
     }
 
     /**
@@ -149,15 +167,16 @@ class Model extends QueryBuilder
     }
 
     /**
-     * Static helper to update by ID (Laravel style)
+     * Static helper to update by primary key (Laravel style)
      *
-     * @param int $id
+     * @param mixed $id
      * @param array $data
      * @return bool
      */
-    public static function updateById(int $id, array $data): bool
+    public static function updateById($id, array $data): bool
     {
-        return static::query()->where("id", $id)->update($data);
+        $instance = new static(static::$pdo);
+        return static::query()->where($instance->primaryKey, $id)->update($data);
     }
 
     /**

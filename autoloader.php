@@ -10,6 +10,7 @@ spl_autoload_register(function($class){
         BASE_PATH . "app/database/",
         BASE_PATH . "app/models/",
         BASE_PATH . "app/query/",
+        BASE_PATH . "app/repositories/",
         BASE_PATH . "app/controller/",
 
     ];

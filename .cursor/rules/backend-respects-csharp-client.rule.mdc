@@ -1,0 +1,69 @@
+---
+name: backend-respects-csharp-client
+description: Backend development rules when a C# biometric application is included as a read-only client
+---
+
+# Overview
+This rule instructs the AI to treat the included C# biometric application as a read-only reference.
+The C# application must NEVER be modified. It exists solely to help the AI understand required API endpoints,
+request formats, and expected response structures.
+
+The backend (PHP, JavaScript, MySQL) must adapt to the C# application's existing expectations.
+
+# When to Apply
+Apply this rule when:
+- A C# biometric or desktop application exists in the repository
+- Creating or modifying PHP backend APIs
+- Designing database structures that serve the C# application
+- Debugging or extending API responses consumed by the C# application
+
+Do NOT apply this rule when:
+- Working on unrelated frontend-only features
+- Writing documentation or comments only
+
+# Core Principles
+- The C# application is READ-ONLY and MUST NOT be changed
+- Backend code must adapt to the C# application's requirements
+- Existing API endpoints in the C# application take priority over backend preferences
+
+# C# Application Handling Rules
+- Never suggest editing, refactoring, or updating the C# application
+- Use the C# code only to understand:
+  - Required API endpoints
+  - Expected request payloads
+  - Expected response formats
+  - Required fields and data types
+- Assume the C# application is already deployed or in use
+
+# API Endpoint Rules
+- If the C# application already references an API endpoint:
+  - Use the same endpoint path
+  - Use the same HTTP method
+  - Match the expected response structure exactly
+- Before creating new endpoints:
+  - Check if an existing endpoint already satisfies the requirement
+  - Ask the user for approval before introducing changes
+
+# API Testing & Validation
+- Test existing API endpoints first to understand:
+  - What data is currently returned
+  - What data is missing or incorrect
+- Modify backend logic only after confirming endpoint behavior
+- Never change API responses in a way that could break the C# client
+
+# Data Responsibility Rules
+- Only return the data required by the C# application
+- Do not add extra fields unless explicitly requested
+- Maintain consistent data types and naming conventions
+
+# Project Structure Rules
+- First, understand the current project structure before suggesting changes
+- Do NOT restructure folders, layers, or architecture automatically
+- If improvements are recommended:
+  - Explain the reason clearly
+  - Ask the user for approval before applying changes
+
+# General Behavior
+- Favor backward compatibility over ideal architecture
+- Ask before making structural or architectural decisions
+- Prioritize system stability over refactoring

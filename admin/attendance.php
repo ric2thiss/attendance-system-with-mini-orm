@@ -1,15 +1,28 @@
 <?php
 require_once __DIR__ . "/../bootstrap.php";
+require_once __DIR__ . "/../auth/helpers.php";
+requireAuth(); // Require authentication - redirects to login if not authenticated
+
 include_once '../shared/components/Sidebar.php';
+include_once '../shared/components/Breadcrumb.php';
 
-$attendances = Attendance::query()->table("attendances AS a")
-    ->select("a.id AS attendance_id, a.employee_id, CONCAT(r.first_name, ' ', r.last_name) AS full_name, a.timestamp AS attendance_time, a.window")
-    ->join("employees AS e", "a.employee_id", "=", " e.employee_id")
-    ->join("residents AS r", "e.resident_id", "=", "r.resident_id")
-    ->orderBy("a.timestamp", "DESC")
-    ->get();
+// Get current user for greeting
+$currentUser = currentUser();
+$userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 
-// var_dump($attendances);
+// Get pagination and search parameters
+$currentPage = isset($_GET['page']) ? $_GET['page'] : 1;
+$searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
+$perPage = 10; // Records per page
+
+// Get data from controller
+$attendanceController = new AttendanceController();
+$data = $attendanceController->getPaginatedAttendances($currentPage, $perPage, $searchQuery);
+
+// Extract data for view
+$attendances = $data['attendances'];
+$pagination = $data['pagination'];
+$searchQuery = $data['searchQuery'];
 
 ?>
 
@@ -24,13 +37,116 @@ $attendances = Attendance::query()->table("attendances AS a")
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Use Inter font family -->
     <style>
-
+        /* Prevent body horizontal scroll */
+        body {
+            overflow-x: hidden;
+        }
         /* Custom darker button color for the new Attendance Now style */
         .btn-dark {
             background-color: #374151; /* A deep slate color */
         }
         .btn-dark:hover {
             background-color: #1f2937;
+        }
+        /* Table styles */
+        .table-header {
+            background-color: #e5e7eb; /* Light gray for table header */
+        }
+        /* Scrollable table container */
+        .table-container {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+            width: 100%;
+            position: relative;
+        }
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+        /* Add border to each table row */
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        /* Ensure main content doesn't overflow */
+        main {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+        /* Toast Notification Styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 400px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.3s ease-in-out;
+        }
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .toast.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        .toast-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toast-icon.success {
+            background: #10b981;
+        }
+        .toast-icon.error {
+            background: #ef4444;
+        }
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+        .toast-content {
+            flex: 1;
+        }
+        .toast-title {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        .toast-message {
+            font-size: 14px;
+            color: #6b7280;
         }
     </style>
 </head>
@@ -50,12 +166,14 @@ $attendances = Attendance::query()->table("attendances AS a")
                 <div class="flex justify-between items-center mb-1">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800">Employee Attendance</h1>
-                        <p class="text-gray-500 text-sm">Good morning, Juan</p>
+                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?></p>
                     </div>
                     <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
                 </div>
-                <!-- Breadcrumb -->
-                <p class="text-xs text-gray-500 mt-2">Home / Attendance Logging</p>
+                <?php Breadcrumb([
+                    ['label' => 'Dashboard', 'link' => 'dashboard.php'],
+                    ['label' => 'Attendance Logs', 'link' => 'attendance.php']
+                ]); ?>
 
                 <!-- Top Action Buttons (Attendance Now & Export) -->
                 <div class="flex justify-end space-x-3 mt-4">
@@ -80,10 +198,19 @@ $attendances = Attendance::query()->table("attendances AS a")
                     <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
                         <h2 class="font-semibold text-gray-800 mb-4">Realtime Insight</h2>
                         
-                        <!-- Clock & Insight (Added sun icon and adjusted text style) -->
+                        <!-- Connection Status Indicator -->
+                        <div class="mb-4 flex items-center space-x-2 text-sm">
+                            <span id="ws-status-indicator" class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>
+                            <span id="ws-status-text" class="text-gray-600">Connecting...</span>
+                        </div>
+                        
+                        <!-- Clock & Insight (Dynamic weather icon) -->
                         <div class="flex items-center space-x-2">
-                            <!-- Sun/Clock Icon (Stylized to match yellow accents) -->
-                            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <!-- Weather/Clock Icon (Dynamic based on weather) -->
+                            <div id="weather-icon" class="w-6 h-6">
+                                <!-- Default sun icon - will be replaced by JavaScript -->
+                                <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            </div>
                             <span class="text-4xl font-extrabold text-gray-900" id="realtime-clock">
                                 10:20 : 28 AM
                             </span>
@@ -92,9 +219,23 @@ $attendances = Attendance::query()->table("attendances AS a")
 
                         <!-- Today's Date (Separated the "Today:" label) -->
                         <p class="text-base text-gray-500">Today:</p>
-                        <p class="text-lg font-bold text-gray-700 mb-6" id="today-date-insight">
+                        <p class="text-lg font-bold text-gray-700 mb-2" id="today-date-insight">
                             28th September 2025
                         </p>
+
+                        <!-- Weather Forecast Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-base text-gray-500 mb-2">Weather Forecast:</p>
+                            <div id="weather-info" class="text-sm text-gray-600">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span id="weather-condition" class="font-medium">Loading...</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span id="weather-temperature" class="text-lg font-semibold text-gray-800">-</span>
+                                    <span id="weather-details" class="text-xs text-gray-500">-</span>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Attendance Button (Dark Blue/Slate Style) -->
                         <button onclick="window.location.href='biometrics://identify'" class="w-full py-3 btn-dark hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors shadow-md text-lg flex items-center justify-center">
@@ -143,14 +284,9 @@ $attendances = Attendance::query()->table("attendances AS a")
                     <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 flex flex-col md:flex-row items-stretch">
                         
                         <!-- Fingerprint/Photo Area -->
-                        <div class="flex flex-shrink-0 space-x-4 mb-4 md:mb-0 md:mr-6">
-                            <!-- <div class="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs flex-col p-2"> -->
-                                <!-- Mock Fingerprint Icon -->
-                                <!-- <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.314-2.686 6-6 6s-6-2.686-6-6 2.686-6 6-6c3.314 0 6 2.686 6 6zm0 0V3m0 0V1M6 17v4m0 0H3m3 0h6m-6-4H3m9 4v4m0 0H9m3 0h3"></path></svg>
-                                FINGERPRINT
-                            </div> -->
-                            <div class="w-24 h-100 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">
-                                <img src="./logo.png" alt="">
+                        <div class="flex flex-shrink-0 mb-4 md:mb-0 md:mr-6 items-start">
+                            <div class="w-36 h-36 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                                <img src="./logo.png" alt="" id="employee_photo" class="w-full h-full object-cover">
                             </div>
                         </div>
 
@@ -195,20 +331,34 @@ $attendances = Attendance::query()->table("attendances AS a")
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Attendances Records</h2>
                         
                         <!-- Search & Search Button (Updated layout) -->
-                        <div class="flex mb-4 space-x-3">
-                            <div class="relative flex-grow">
-                                <input type="text" id="search-employee-record" placeholder="Search Employee Name"
-                                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
+                        <form method="GET" action="" class="mb-4">
+                            <div class="relative w-full sm:w-1/2 lg:w-1/3">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <input type="text" 
+                                    id="search-employee-record" 
+                                    name="search" 
+                                    placeholder="Search employee name, ID, or status..."
+                                    value="<?= htmlspecialchars($searchQuery) ?>"
+                                    class="w-full py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                <?php if (!empty($searchQuery)): ?>
+                                <button type="button" onclick="window.location.href='?'" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                <?php endif; ?>
                             </div>
-                            <button class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-lg transition-colors shadow-md text-sm">
-                                Search
-                            </button>
-                        </div>
+                        </form>
                         
                         <!-- Table Wrapper for Horizontal Scroll on small screens -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                        <div class="table-container rounded-lg border border-gray-200">
+                            <div class="inline-block min-w-full align-middle">
+                                <table class="min-w-full divide-y divide-gray-200" style="min-width: 800px;">
+                                <thead class="table-header">
                                     <tr>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -216,45 +366,94 @@ $attendances = Attendance::query()->table("attendances AS a")
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <!-- Sample Log 1 -->
-                                     <?php foreach($attendances as $attendance):?>
+                                <tbody id="attendance-table-body" class="bg-white divide-y divide-gray-200">
+                                    <?php if (empty($attendances)): ?>
+                                    <tr id="no-records-row">
+                                        <td colspan="4" class="px-3 py-8 text-center text-gray-500">
+                                            <p class="text-sm">No attendance records found.</p>
+                                        </td>
+                                    </tr>
+                                    <?php else: ?>
+                                    <?php foreach($attendances as $attendance):?>
                                     <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900"><?=$attendance->employee_id?></td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700"><?=$attendance->full_name?></td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500"><?=$attendance->attendance_time?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900"><?= htmlspecialchars($attendance->employee_id ?? '') ?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700"><?= htmlspecialchars($attendance->full_name ?? '') ?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500"><?= htmlspecialchars($attendance->attendance_time ?? '') ?></td>
                                         <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?=$attendance->window?></span>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?= htmlspecialchars($attendance->window ?? '') ?></span>
                                         </td>
                                     </tr>
                                     <?php endforeach ?>
-                                    
-                                    <!-- Sample Log 2 -->
-                                    <!-- <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">EMP002</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">John Smith</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">2025-09-28 05:00 PM</td>
-                                        <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Time Out</span>
-                                        </td>
-                                    </tr> -->
-
-                                    <!-- Sample Log 3 -->
-                                    <!-- <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">EMP003</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">Urey G. Gorge</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">2025-09-28 08:05 AM</td>
-                                        <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Time In</span>
-                                        </td>
-                                    </tr> -->
+                                    <?php endif; ?>
+                                
                                 </tbody>
-                            </table>
+                                </table>
+                            </div>
                         </div>
 
-                        <!-- Pagination (Mockup) -->
-                        <div class="mt-6 flex justify-end items-center text-sm text-gray-600">
-                            <p>Showing 1 - 10 of 100 records</p>
+                        <!-- Pagination -->
+                        <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
+                            <div>
+                                Showing <span class="font-medium"><?= $pagination['startRecord'] ?></span> to <span class="font-medium"><?= $pagination['endRecord'] ?></span> of <span class="font-medium"><?= $pagination['totalRecords'] ?></span> records
+                                <?php if (!empty($searchQuery)): ?>
+                                    <span class="text-gray-500">(filtered)</span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <?php if ($pagination['totalPages'] > 1): ?>
+                            <nav class="flex space-x-1" aria-label="Pagination">
+                                <!-- Previous Button -->
+                                <?php 
+                                // Build query string for pagination links
+                                $queryString = !empty($searchQuery) ? '&search=' . urlencode($searchQuery) : '';
+                                ?>
+                                <?php if ($pagination['currentPage'] > 1): ?>
+                                    <a href="?page=<?= $pagination['currentPage'] - 1 ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                                        Previous
+                                    </a>
+                                <?php else: ?>
+                                    <span class="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed">Previous</span>
+                                <?php endif; ?>
+                                
+                                <!-- Page Numbers -->
+                                <?php
+                                $startPage = max(1, $pagination['currentPage'] - 2);
+                                $endPage = min($pagination['totalPages'], $pagination['currentPage'] + 2);
+                                
+                                // Show first page if not in range
+                                if ($startPage > 1): ?>
+                                    <a href="?page=1<?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">1</a>
+                                    <?php if ($startPage > 2): ?>
+                                        <span class="px-3 py-2 text-gray-500">...</span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                                
+                                <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                    <?php if ($i == $pagination['currentPage']): ?>
+                                        <span class="px-3 py-2 border border-gray-300 rounded-lg bg-blue-600 text-white font-medium"><?= $i ?></span>
+                                    <?php else: ?>
+                                        <a href="?page=<?= $i ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"><?= $i ?></a>
+                                    <?php endif; ?>
+                                <?php endfor; ?>
+                                
+                                <!-- Show last page if not in range -->
+                                <?php if ($endPage < $pagination['totalPages']): ?>
+                                    <?php if ($endPage < $pagination['totalPages'] - 1): ?>
+                                        <span class="px-3 py-2 text-gray-500">...</span>
+                                    <?php endif; ?>
+                                    <a href="?page=<?= $pagination['totalPages'] ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"><?= $pagination['totalPages'] ?></a>
+                                <?php endif; ?>
+                                
+                                <!-- Next Button -->
+                                <?php if ($pagination['currentPage'] < $pagination['totalPages']): ?>
+                                    <a href="?page=<?= $pagination['currentPage'] + 1 ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                                        Next
+                                    </a>
+                                <?php else: ?>
+                                    <span class="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed">Next</span>
+                                <?php endif; ?>
+                            </nav>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -264,174 +463,28 @@ $attendances = Attendance::query()->table("attendances AS a")
         </main>
     </div>
 
-    <!-- JavaScript for Date, Time, and Sidebar Toggle -->
-    <script>
-        // Data table 
+    <!-- Toast Notification (Success/Error) -->
+    <div id="attendance-toast" class="toast">
+        <div class="toast-icon success">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title" id="toast-title">Attendance Logged Successfully</div>
+            <div class="toast-message" id="toast-message">New attendance record has been added.</div>
+        </div>
+    </div>
 
-       // ✅ Connect to WebSocket server
-        const socket = new WebSocket("ws://localhost:8080");
+    <!-- Pass PHP config values to JavaScript via meta tags -->
+    <meta name="websocket-url" content="<?php echo htmlspecialchars(WEBSOCKET_URL); ?>">
+    <meta name="attendance-api-url" content="<?php echo htmlspecialchars(API_ENDPOINT_ATTENDANCES); ?>">
+    
+    <!-- Modular JavaScript Entry Point -->
+    <script type="module" 
+            data-websocket-url="<?php echo htmlspecialchars(WEBSOCKET_URL); ?>"
+            data-attendance-api-url="<?php echo htmlspecialchars(API_ENDPOINT_ATTENDANCES); ?>"
+            src="./js/attendance/main.js"></script>
 
-        // --- Handle connection open ---
-        socket.onopen = () => {
-        console.log("✅ Connected to WebSocket server");
-        };
-
-        // --- Handle incoming messages ---
-        socket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (!data) return;
-
-            const { lastAttendee, lastAttendeeEmployee, lastAttendeeResident } = data;
-            if (!lastAttendee) return;
-
-            // --- Elements ---
-            const timeInEl = document.getElementById("time_in");
-            const timeOutEl = document.getElementById("time_out");
-            const roleEl = document.getElementById("role");
-            const empIdEl = document.getElementById("employee_id");
-            const nameEl = document.getElementById("name");
-            const windowEl = document.getElementById("window");
-
-            // --- Format time ---
-            const date = new Date(lastAttendee.created_at.replace(" ", "T"));
-            const formattedTime = date.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            });
-
-            // --- Display Employee Info ---
-            roleEl.textContent = lastAttendeeEmployee?.position || "N/A";
-            empIdEl.textContent = lastAttendee.employee_id || "Unknown";
-
-            const firstName = lastAttendeeResident?.first_name || "";
-            const lastName = lastAttendeeResident?.last_name || "";
-            nameEl.textContent = `${firstName} ${lastName}`.trim() || "Unnamed";
-
-            // --- Display Attendance Window ---
-            const windowMap = {
-                morning_in: "Morning In",
-                morning_out: "Morning Out",
-                afternoon_in: "Afternoon In",
-                afternoon_out: "Afternoon Out",
-            };
-
-            const windowText = windowMap[lastAttendee.window] || "Unknown Window";
-            windowEl.textContent = windowText;
-
-            // --- Display Time In / Out ---
-            if (windowText.includes("In")) {
-                timeInEl.textContent = formattedTime;
-                timeOutEl.textContent = "-";
-            } else if (windowText.includes("Out")) {
-                timeOutEl.textContent = formattedTime;
-                timeInEl.textContent = "-";
-            } else {
-                timeInEl.textContent = "-";
-                timeOutEl.textContent = "-";
-            }
-
-        } catch (error) {
-            console.error("❌ Error parsing WebSocket message:", error);
-        }
-        };
-
-        // --- Handle disconnection ---
-        socket.onclose = () => {
-            console.log("❌ Disconnected from WebSocket server");
-        };
-
-
-
-        // --- 1. Update Header Date ---
-        function updateHeaderDate() {
-            const now = new Date();
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-            const dateElement = document.getElementById('current-date');
-            if(dateElement) {
-                dateElement.textContent = now.toLocaleDateString('en-US', options);
-            }
-        }
-        updateHeaderDate();
-
-        // --- 2. Update Realtime Clock and Today's Date ---
-        function updateRealtimeClock() {
-            const now = new Date();
-            
-            // Clock
-            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-            const clockElement = document.getElementById('realtime-clock');
-            
-            // Format time: HH:MM : SS AM/PM
-            const timeParts = now.toLocaleTimeString('en-US', timeOptions).split(' ');
-            const time = timeParts[0];
-            const ampm = timeParts[1];
-            // Replace the colon in HH:MM with a space-colon-space, and add SS with space-colon-space
-            const formattedTime = time.replace(/:/g, ' : ') + ' ' + ampm;
-
-            if (clockElement) {
-                // Example: 10:20 : 28 AM
-                clockElement.textContent = formattedTime;
-            }
-
-            // Today's Date (Format: 28th September 2025)
-            const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-            const day = now.getDate();
-            let daySuffix;
-
-            if (day > 3 && day < 21) { // 11th to 19th
-                daySuffix = 'th';
-            } else {
-                switch (day % 10) {
-                    case 1:  daySuffix = "st"; break;
-                    case 2:  daySuffix = "nd"; break;
-                    case 3:  daySuffix = "rd"; break;
-                    default: daySuffix = "th";
-                }
-            }
-
-            // Create the date string in the format: "28th September 2025"
-            const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-            const dateString = day + daySuffix + ' ' + monthYear;
-            
-            const dateInsightElement = document.getElementById('today-date-insight');
-            if (dateInsightElement) {
-                dateInsightElement.textContent = dateString;
-            }
-        }
-        
-        // Update the clock every second
-        setInterval(updateRealtimeClock, 1000);
-        updateRealtimeClock(); // Initial call
-
-
-        // --- 3. Mobile Sidebar Toggle Logic ---
-        const sidebar = document.getElementById('sidebar');
-        const toggleButton = document.getElementById('sidebar-toggle');
-        const mainContent = document.querySelector('main');
-
-        toggleButton.addEventListener('click', () => {
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
-                // Dim the main content when the sidebar is open on mobile
-                mainContent.classList.add('opacity-50', 'pointer-events-none');
-            } else {
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-
-        // Close sidebar if main content is clicked on mobile
-        mainContent.addEventListener('click', () => {
-            if (window.innerWidth < 768 && sidebar.classList.contains('translate-x-0')) {
-                 sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-    </script>
 </body>
 </html>

@@ -2,6 +2,13 @@
 
 class BiometricController 
 {
+    protected $fingerprintsRepository;
+
+    public function __construct() {
+        $db = (new Database())->connect();
+        $this->fingerprintsRepository = new FingerprintsRepository($db);
+    }
+
     public function store(array $data)
     {
         header('Content-Type: application/json');
@@ -21,7 +28,7 @@ class BiometricController
             }
         }
 
-        $employee = (new Fingerprints())->where('employee_id', $data["employee_id"])->first();
+        $employee = $this->fingerprintsRepository->findBy('employee_id', $data["employee_id"]);
 
         if(!$employee) {
             http_response_code(404);

@@ -1,7 +1,12 @@
 <?php
 
 class EmployeeController {
+    protected $employeeRepository;
 
+    public function __construct() {
+        $db = (new Database())->connect();
+        $this->employeeRepository = new EmployeeRepository($db);
+    }
 
     public function store($data)
     {
@@ -28,7 +33,7 @@ class EmployeeController {
         }
 
         try {
-            $createdEmployee = Employee::create($data);
+            $createdEmployee = $this->employeeRepository->create($data);
 
             if ($createdEmployee) {
                 return [
@@ -55,40 +60,32 @@ class EmployeeController {
 
     public function getAllEmployees()
     {
-        $employees = Employee::query()
-        ->select(
-            "residents.resident_id",
-            "residents.first_name",
-            "residents.middle_name",
-            "residents.last_name",
-            "residents.suffix",
-            "residents.gender",
-            "employees.employee_id",
-            "position.position_name",
-            "activity_types.activity_name",
-        )
-        ->join("residents", "employees.resident_id", "=", "residents.resident_id")
-        ->leftJoin("employee_activity","employees.employee_id","=","employee_activity.employee_id")
-        ->leftJoin("activity_types","employee_activity.activity_types_id","=","activity_types.activity_types_id")
-        ->leftJoin("position", "employees.position_id", "=", "position.position_id")
-        ->get();
-        $employeeCounts = $this->getAllEmployeeCount();
+        $employees = $this->employeeRepository->getAllWithRelations();
+        $employeeCounts = $this->employeeRepository->getEmployeeCount();
 
-        return ["employees"=>$employees, "employeeCounts" => $employeeCounts];
+        return ["employees"=>$employees, "employeeCounts" => [["count" => $employeeCounts]]];
     }
-    
-    private function getAllEmployeeCount()
+
+    /**
+     * Get paginated employees with search
+     *
+     * @param int $page Current page number
+     * @param int $perPage Records per page
+     * @param string $searchQuery Search term (optional)
+     * @return array
+     */
+    public function getPaginatedEmployees($page = 1, $perPage = 10, $searchQuery = '')
     {
-        return Employee::query()
-        ->select("COUNT(*) as count")
-        ->get();
+        return $this->employeeRepository->getPaginated($page, $perPage, $searchQuery);
     }
 
-    // public function getEmployeeCurrentActivity()
-    // {
-    //     $employees = Employee::query()
-    //     ->join("employee_activity", "")
-    //     return;
-    // }
-
+    /**
+     * Get the last created employee ID
+     * 
+     * @return string|null
+     */
+    public function getLastEmployeeId()
+    {
+        return $this->employeeRepository->getLastEmployeeId();
+    }
 }

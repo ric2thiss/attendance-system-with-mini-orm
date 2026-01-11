@@ -1,0 +1,84 @@
+/**
+ * Dashboard Main Entry Point
+ * Initializes all dashboard modules and coordinates their interactions
+ */
+
+import { initWebSocket, cleanupWebSocket } from './websocket.js';
+import { initClock } from './clock.js';
+import { initWeather, fetchWeatherData } from './weather.js';
+import { initializeCharts } from './charts.js';
+import { initVisitorStats } from './visitorStats.js';
+import { initEmployeeStats } from './employeeStats.js';
+import { initSidebar } from './sidebar.js';
+
+// WebSocket URL is passed from PHP via a global variable
+// This should be set before this module loads: window.WEBSOCKET_URL
+
+/**
+ * Initialize all dashboard functionality
+ */
+function initDashboard() {
+    // Initialize WebSocket connection
+    if (typeof window.WEBSOCKET_URL !== 'undefined') {
+        initWebSocket(window.WEBSOCKET_URL);
+        // Update initial status
+        const statusText = document.getElementById('ws-status-text');
+        if (statusText) {
+            statusText.textContent = 'Connecting...';
+        }
+    }
+
+    // Initialize clock
+    initClock();
+
+    // Initialize weather
+    initWeather();
+    // Refresh weather every 30 minutes
+    setInterval(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    fetchWeatherData(position.coords.latitude, position.coords.longitude);
+                },
+                () => {
+                    // Use default location on error
+                    fetchWeatherData(8.95, 125.53);
+                },
+                {
+                    timeout: 5000,
+                    enableHighAccuracy: false
+                }
+            );
+        } else {
+            fetchWeatherData(8.95, 125.53);
+        }
+    }, 30 * 60 * 1000);
+
+    // Initialize charts when the window loads
+    if (document.readyState === 'loading') {
+        window.addEventListener('load', initializeCharts);
+    } else {
+        initializeCharts();
+    }
+
+    // Initialize visitor statistics
+    initVisitorStats();
+
+    // Initialize employee statistics
+    initEmployeeStats();
+
+    // Initialize sidebar
+    initSidebar();
+
+    // Cleanup WebSocket connection when page is unloaded
+    window.addEventListener('beforeunload', () => {
+        cleanupWebSocket();
+    });
+}
+
+// Initialize dashboard when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+    initDashboard();
+}

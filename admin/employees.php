@@ -1,19 +1,40 @@
 <?php
 require_once __DIR__ . "/../bootstrap.php";
+require_once __DIR__ . "/../auth/helpers.php";
+requireAuth(); // Require authentication - redirects to login if not authenticated
+
 include_once '../shared/components/Sidebar.php';
+include_once '../shared/components/Breadcrumb.php';
 
-// For employee table
-$employeesData = (new EmployeeController())->getAllEmployees();
+// Get current user for greeting
+$currentUser = currentUser();
+$userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 
-$residents = (new ResidentController())->getAllResident();
-// $employeeCurrentActivities = (new EmployeeController())->getEmployeeCurrentActivity();
+// Pagination and search parameters
+$perPage = 10; // Records per page
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Fetch data from controller
+$employeeController = new EmployeeController();
+$data = $employeeController->getPaginatedEmployees($currentPage, $perPage, $searchQuery);
+
+$employees = $data['employees'];
+$pagination = $data['pagination'];
+$searchQuery = $data['searchQuery'];
+
+$totalRecords = $pagination['totalRecords'];
+$totalPages = $pagination['totalPages'];
+$startRecord = $pagination['startRecord'];
+$endRecord = $pagination['endRecord'];
+
+// For employee table (keeping original structure for compatibility)
+$employeesData = ["employees" => $employees];
+
+$residents = (new ResidentController())->getAllResidentNotEmployee();
 $departmentLists = (new DepartmentController())->getDepartmentLists();
-
 $positions = (new PositionController())->getAllPosition();
-
-// foreach($positions as $position){
-//     echo $position->position_name;
-// }
+$lastEmployeeId = $employeeController->getLastEmployeeId();
 
 ?>
 <!DOCTYPE html>
@@ -36,9 +57,49 @@ $positions = (new PositionController())->getAllPosition();
         .btn-primary:hover {
             background-color: #0056b3;
         }
+        /* Prevent body horizontal scroll */
+        body {
+            overflow-x: hidden;
+        }
         /* Table styles */
         .table-header {
             background-color: #e5e7eb; /* Light gray for table header */
+        }
+        /* Scrollable table container */
+        .table-container {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+            width: 100%;
+            position: relative;
+        }
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+        /* Add border to each table row */
+        tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        /* Ensure main content doesn't overflow */
+        main {
+            overflow-x: hidden;
+            max-width: 100%;
         }
     </style>
 </head>
@@ -57,22 +118,35 @@ $positions = (new PositionController())->getAllPosition();
                 <div class="flex justify-between items-center mb-1">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800">Employee Directory</h1>
-                        <p class="text-gray-500 text-sm">Manage all current and past employees in one place.</p>
+                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage all current and past employees in one place.</p>
                     </div>
                 </div>
+                <?php Breadcrumb([
+                    ['label' => 'Dashboard', 'link' => 'dashboard.php'],
+                    ['label' => 'Employees', 'link' => 'employees.php']
+                ]); ?>
             </header>
 
             <!-- EMPLOYEE MANAGEMENT SECTION -->
-            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                 
                 <!-- Controls: Search, Filter, and Add Button -->
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
                     
                     <!-- Search Input -->
-                    <div class="relative w-full sm:w-1/2 lg:w-1/3">
-                        <input type="text" placeholder="Search employee name, ID, or department..." class="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <form method="GET" action="" class="relative w-full sm:w-1/2 lg:w-1/3">
+                        <input type="text" 
+                            name="search" 
+                            placeholder="Search employee name, ID, or position..." 
+                            value="<?= htmlspecialchars($searchQuery) ?>"
+                            class="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                         <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
+                        <?php if (!empty($searchQuery)): ?>
+                        <a href="?" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </a>
+                        <?php endif; ?>
+                    </form>
 
                     <!-- Add Employee Button -->
                     <button class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center" id="openAddEmployeeModal">
@@ -82,8 +156,9 @@ $positions = (new PositionController())->getAllPosition();
                 </div>
 
                 <!-- Employee Table -->
-                <div class="overflow-x-auto rounded-lg border border-gray-200">
-                    <table class="min-w-full divide-y divide-gray-200">
+                <div class="table-container rounded-lg border border-gray-200">
+                    <div class="inline-block min-w-full align-middle">
+                        <table class="min-w-full divide-y divide-gray-200" style="min-width: 1000px; width: 100%;">
                         <thead class="table-header">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Employee ID</th>
@@ -96,48 +171,128 @@ $positions = (new PositionController())->getAllPosition();
                         </thead>
 
                         <tbody class="bg-white divide-y divide-gray-200">
+                            <?php if (empty($employeesData["employees"])): ?>
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <p class="text-sm">No employees found.</p>
+                                </td>
+                            </tr>
+                            <?php else: ?>
                             <?php foreach ($employeesData["employees"] as $employee): ?>
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <?= $employee->employee_id ?>
+                                    <?= htmlspecialchars($employee->employee_id ?? '') ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    <?= $employee->first_name . ' ' . $employee->last_name ?>
+                                    <?= htmlspecialchars(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')) ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                     BARANGAY
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    <?= $employee->position_name ?>
+                                    <?= htmlspecialchars($employee->position_name ?? '') ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                     <?= $employee->activity_name ? $employee->activity_name : "Office"; ?>
+                                     <?= htmlspecialchars($employee->activity_name ? $employee->activity_name : "Office") ?>
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button class="text-indigo-600 hover:text-indigo-900 transition-colors editBtn" data-id="<?= $employee->employee_id ?>">Edit</button>
-                                    <button class="text-red-600 hover:text-red-900 transition-colors">Delete</button>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button 
+                                            class="editBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" 
+                                            data-id="<?= htmlspecialchars($employee->employee_id ?? '') ?>"
+                                            title="Edit Employee">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                            Edit
+                                        </button>
+                                        <button 
+                                            class="delete inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
+                                            data-id="<?= htmlspecialchars($employee->employee_id ?? '') ?>"
+                                            data-name="<?= htmlspecialchars(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')) ?>"
+                                            title="Delete Employee">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
 
-                    </table>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Pagination Placeholder -->
-                <div class="mt-4 flex justify-between items-center text-sm text-gray-600">
+                <!-- Pagination -->
+                <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
                     <div>
-                        Showing <span class="font-medium">1</span> to <span class="font-medium">10</span> of <span class="font-medium">32</span> results
+                        Showing <span class="font-medium"><?= $startRecord ?></span> to <span class="font-medium"><?= $endRecord ?></span> of <span class="font-medium"><?= $totalRecords ?></span> records
+                        <?php if (!empty($searchQuery)): ?>
+                            <span class="text-gray-500">(filtered)</span>
+                        <?php endif; ?>
                     </div>
+                    
+                    <?php if ($totalPages > 1): ?>
                     <nav class="flex space-x-1" aria-label="Pagination">
-                        <a href="#" class="p-2 border rounded-lg hover:bg-gray-100">Previous</a>
-                        <a href="#" class="p-2 border rounded-lg bg-blue-600 text-white hover:bg-blue-700">1</a>
-                        <a href="#" class="p-2 border rounded-lg hover:bg-gray-100">2</a>
-                        <a href="#" class="p-2 border rounded-lg hover:bg-gray-100">3</a>
-                        <a href="#" class="p-2 border rounded-lg hover:bg-gray-100">Next</a>
+                        <?php
+                        // Build query string for pagination links
+                        $queryString = !empty($searchQuery) ? '&search=' . urlencode($searchQuery) : '';
+                        ?>
+                        
+                        <!-- Previous Button -->
+                        <?php if ($currentPage > 1): ?>
+                            <a href="?page=<?= $currentPage - 1 ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                                Previous
+                            </a>
+                        <?php else: ?>
+                            <span class="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed">Previous</span>
+                        <?php endif; ?>
+                        
+                        <!-- Page Numbers -->
+                        <?php
+                        $startPage = max(1, $currentPage - 2);
+                        $endPage = min($totalPages, $currentPage + 2);
+                        
+                        // Show first page if not in range
+                        if ($startPage > 1): ?>
+                            <a href="?page=1<?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">1</a>
+                            <?php if ($startPage > 2): ?>
+                                <span class="px-3 py-2 text-gray-500">...</span>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                            <?php if ($i == $currentPage): ?>
+                                <span class="px-3 py-2 border border-gray-300 rounded-lg bg-blue-600 text-white font-medium"><?= $i ?></span>
+                            <?php else: ?>
+                                <a href="?page=<?= $i ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"><?= $i ?></a>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                        
+                        <!-- Show last page if not in range -->
+                        <?php if ($endPage < $totalPages): ?>
+                            <?php if ($endPage < $totalPages - 1): ?>
+                                <span class="px-3 py-2 text-gray-500">...</span>
+                            <?php endif; ?>
+                            <a href="?page=<?= $totalPages ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"><?= $totalPages ?></a>
+                        <?php endif; ?>
+                        
+                        <!-- Next Button -->
+                        <?php if ($currentPage < $totalPages): ?>
+                            <a href="?page=<?= $currentPage + 1 ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                                Next
+                            </a>
+                        <?php else: ?>
+                            <span class="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed">Next</span>
+                        <?php endif; ?>
                     </nav>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -167,7 +322,12 @@ $positions = (new PositionController())->getAllPosition();
                                 <form class="space-y-4">
                                     <div>
                                         <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
-                                        <input type="text" name="employee_id" id="employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="text" name="employee_id" id="employee_id" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="<?= $lastEmployeeId ? 'Last ID: ' . htmlspecialchars($lastEmployeeId) : 'Enter employee ID' ?>">
+                                        <?php if ($lastEmployeeId): ?>
+                                            <p class="mt-1 text-xs text-gray-500">Last created employee ID: <span class="font-semibold text-gray-700"><?= htmlspecialchars($lastEmployeeId) ?></span></p>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div>
@@ -317,134 +477,12 @@ $positions = (new PositionController())->getAllPosition();
         </main>
     </div>
 
-    <!-- JavaScript for Sidebar Toggle -->
-    <script>
-        const addEmployeeBtn = document.getElementById("addEmployeeBtn");
-
-        const URL = "http://localhost/attendance-system/api/v1/request.php?query=employees";
-
-        const handleAddEmployee = async () => {
-            const employee_id = document.getElementById("employee_id").value;
-            const resident_id = document.getElementById("resident_id").value;
-            const department_id = document.getElementById("department_id").value;
-            const position_id = document.getElementById("position_id").value;
-            const hired_date = document.getElementById("hired_date").value;
-
-            if (!resident_id || !department_id || !position_id || !hired_date) {
-                alert("Please fill out all required fields.");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("employee_id", employee_id);
-            formData.append("resident_id", resident_id);
-            formData.append("department_id", department_id);
-            formData.append("position_id", position_id);
-            formData.append("hired_date", hired_date);
-
-            try {
-                const response = await fetch(URL, {
-                    method: "POST",
-                    headers: {
-                        "x-api-key": "HELLOWORLD",
-                        "Content-Type" :"application/json"
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    alert(data.message || "Employee added successfully!");
-                    document.getElementById("employeeForm")?.reset();
-                } else {
-                    alert(data.error || "Failed to add employee.");
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Something went wrong. Please try again later.");
-            }
-        };
-
-        addEmployeeBtn.addEventListener("click", handleAddEmployee);
-
-
-        document.addEventListener('click', (e) => {
-            const modal = document.getElementById("editEmployeeModal")
-            if (e.target.classList.contains('editBtn')) {
-                const employeeId = e.target.dataset.id;
-                modal.classList.remove("hidden")
-                
-                document.getElementById("edit_modal_employee_id").value = employeeId
-
-            }
-        });
-
-
-
-
-        // --- Mobile Sidebar Toggle Logic ---
-        const sidebar = document.getElementById('sidebar');
-        const toggleButton = document.getElementById('sidebar-toggle');
-        const mainContent = document.querySelector('main');
-
-        toggleButton.addEventListener('click', () => {
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
-                mainContent.classList.add('opacity-50', 'pointer-events-none');
-            } else {
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-
-        // Close sidebar if main content is clicked on mobile
-        mainContent.addEventListener('click', () => {
-            if (window.innerWidth < 768 && sidebar.classList.contains('translate-x-0')) {
-                 sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-    </script>
-
-    <script>
-    // ... (Your existing sidebar toggle script) ...
-
-    // --- Modal Toggle Logic ---
-    const openModalButton = document.getElementById('openAddEmployeeModal');
-    const modal = document.getElementById('addEmployeeModal');
-
-    // Function to open the modal
-    if (openModalButton) {
-        openModalButton.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-            // Optional: Focus the first input for accessibility
-            // document.getElementById('firstName').focus();
-        });
-    }
-
-    // Function to close the modal (already handled by close buttons, but good for backdrop)
-    const closeModal = () => {
-        modal.classList.add('hidden');
-    }
-
-    // Close when clicking the backdrop (outside the modal content)
-    modal.addEventListener('click', (e) => {
-        if (e.target.id === 'addEmployeeModal') {
-            closeModal();
-        }
-    });
-
-    // Close when pressing the ESC key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
-        }
-    });
-
-</script>
+    <!-- Pass PHP config values to JavaScript via meta tags -->
+    <meta name="employees-api-url" content="<?php echo htmlspecialchars(API_ENDPOINT_EMPLOYEES_STORE); ?>">
+    
+    <!-- Modular JavaScript Entry Point -->
+    <script type="module" 
+            data-employees-api-url="<?php echo htmlspecialchars(API_ENDPOINT_EMPLOYEES_STORE); ?>"
+            src="./js/employees/main.js"></script>
 </body>
 </html>

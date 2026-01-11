@@ -1,7 +1,14 @@
 <?php
+require_once __DIR__ . "/../bootstrap.php";
+require_once __DIR__ . "/../auth/helpers.php";
+requireAuth(); // Require authentication - redirects to login if not authenticated
 
 include_once '../shared/components/Sidebar.php';
+include_once '../shared/components/Breadcrumb.php';
 
+// Get current user for greeting
+$currentUser = currentUser();
+$userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,7 +81,7 @@ include_once '../shared/components/Sidebar.php';
                 <div class="flex justify-between items-center mb-1">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800">Payroll Management</h1>
-                        <p class="text-gray-500 text-sm">Manage employee compensation, process payruns, and review history.</p>
+                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage employee compensation, process payruns, and review history.</p>
                     </div>
                     <div>
                         <button id="processPayrunButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
@@ -83,6 +90,10 @@ include_once '../shared/components/Sidebar.php';
                         </button>
                     </div>
                 </div>
+                <?php Breadcrumb([
+                    ['label' => 'Dashboard', 'link' => 'dashboard.php'],
+                    ['label' => 'Payroll', 'link' => 'payroll.php']
+                ]); ?>
             </header>
 
             <!-- PAYROLL SUMMARY CARDS -->
@@ -190,169 +201,7 @@ include_once '../shared/components/Sidebar.php';
         </main>
     </div>
 
-    <!-- JavaScript for Sidebar Toggle and Payroll Logic -->
-    <script>
-        // --- Global Variables (Initial State - updated on payrun) ---
-        let lastNetTotal = 725400; // Corresponds to the initial P725,400.00
-        let lastGrossTotal = 850500;
-        let lastDeductionsTotal = 125100;
-        let employeeCount = 15;
-
-        // Utility function to format currency
-        const formatCurrency = (amount) => {
-            return '₱ ' + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        };
-
-        // Utility function to get today's date in 'Mon DD, YYYY' format
-        const getFormattedDate = () => {
-            const date = new Date();
-            const options = { month: 'short', day: 'numeric', year: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
-        };
-
-        // --- Core Payroll Logic ---
-        function processNewPayrun() {
-            // 1. Generate Fake Data for the new Payrun
-            const payrunDate = getFormattedDate();
-            
-            // Increment the employee count slightly for variation
-            employeeCount = Math.min(employeeCount + Math.floor(Math.random() * 2), 20); 
-
-            // Simulate slight growth in totals (Net Pay between +1% and +5%)
-            const netIncreaseFactor = 1 + (Math.random() * 0.04 + 0.01); // 1.01 to 1.05
-            const newNetTotal = Math.round(lastNetTotal * netIncreaseFactor / 100) * 100; // Round to nearest 100
-            
-            // Gross and Deductions are derived from new Net Total to maintain consistency
-            const newGrossTotal = Math.round(newNetTotal * 1.18 / 100) * 100; // Gross is approx Net * 1.18
-            const newDeductionsTotal = newGrossTotal - newNetTotal;
-
-            const newPayrunData = {
-                payrunDate: payrunDate,
-                periodCovered: `New Period - ${payrunDate}`, // Placeholder period
-                employeesPaid: employeeCount,
-                netTotal: newNetTotal,
-                grossTotal: newGrossTotal,
-                deductionsTotal: newDeductionsTotal,
-                status: 'Completed',
-            };
-
-            // 2. Update Summary Cards
-            updateSummaryCards(newPayrunData);
-
-            // 3. Add New Row to Table
-            addNewRowToTable(newPayrunData);
-
-            // 4. Update the "last" totals for the next run
-            lastNetTotal = newNetTotal;
-            lastGrossTotal = newGrossTotal;
-            lastDeductionsTotal = newDeductionsTotal;
-
-            // 5. Show Success Modal
-            showModal(`Payroll for ${payrunDate} (Net: ${formatCurrency(newNetTotal)}) processed.`);
-
-            // Remove the 'Pending' row if it exists
-            const pendingRow = document.getElementById('pending-row');
-            if (pendingRow) {
-                pendingRow.remove();
-            }
-        }
-
-        function updateSummaryCards(data) {
-            // Update Net Pay Card
-            document.getElementById('totalNetPay').textContent = formatCurrency(data.netTotal);
-            document.getElementById('employeesCount').textContent = `For ${data.employeesPaid} active employees`;
-            
-            // Update Gross Pay Card
-            document.getElementById('totalGrossPay').textContent = formatCurrency(data.grossTotal);
-            const grossChange = (((data.grossTotal - lastGrossTotal) / lastGrossTotal) * 100).toFixed(1);
-            const grossChangeElement = document.getElementById('grossPayChange');
-            grossChangeElement.textContent = `${grossChange > 0 ? '+' : ''}${grossChange}% vs. previous month`;
-            grossChangeElement.classList.toggle('text-green-500', grossChange >= 0);
-            grossChangeElement.classList.toggle('text-red-500', grossChange < 0);
-
-
-            // Update Deductions Card
-            document.getElementById('totalDeductions').textContent = formatCurrency(data.deductionsTotal);
-            const deductionsChange = (((data.deductionsTotal - lastDeductionsTotal) / lastDeductionsTotal) * 100).toFixed(1);
-            const deductionsChangeElement = document.getElementById('deductionsChange');
-            deductionsChangeElement.textContent = `${deductionsChange > 0 ? '+' : ''}${deductionsChange}% vs. previous month`;
-            // Deductions going up is typically negative for net pay, but here we just show the change
-            deductionsChangeElement.classList.toggle('text-red-500', deductionsChange >= 0); 
-            deductionsChangeElement.classList.toggle('text-green-500', deductionsChange < 0);
-        }
-
-        function addNewRowToTable(data) {
-            const tableBody = document.getElementById('payrunsTableBody');
-
-            const newRowHTML = `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${data.payrunDate}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.periodCovered}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.employeesPaid}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${formatCurrency(data.netTotal)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${data.status}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                        <a href="#" class="text-gray-600 hover:text-gray-900">Export</a>
-                    </td>
-                </tr>
-            `;
-
-            // Prepend the new row to the table body
-            tableBody.insertAdjacentHTML('afterbegin', newRowHTML);
-        }
-        
-        // --- Modal Functionality ---
-        const successModal = document.getElementById('successModal');
-        const closeModalButton = document.getElementById('closeModal');
-        const modalMessage = document.getElementById('modalMessage');
-
-        function showModal(message) {
-            modalMessage.textContent = message;
-            successModal.classList.remove('opacity-0', 'pointer-events-none');
-            successModal.querySelector('div').classList.remove('scale-95');
-            successModal.querySelector('div').classList.add('scale-100');
-        }
-
-        function hideModal() {
-            successModal.classList.add('opacity-0', 'pointer-events-none');
-            successModal.querySelector('div').classList.remove('scale-100');
-            successModal.querySelector('div').classList.add('scale-95');
-        }
-
-        closeModalButton.addEventListener('click', hideModal);
-
-        // --- Event Listeners and Initialization ---
-        document.getElementById('processPayrunButton').addEventListener('click', processNewPayrun);
-
-
-        // --- Mobile Sidebar Toggle Logic ---
-        const sidebar = document.getElementById('sidebar');
-        const toggleButton = document.getElementById('sidebar-toggle');
-        const mainContent = document.querySelector('main');
-
-        toggleButton.addEventListener('click', () => {
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
-                mainContent.classList.add('opacity-50', 'pointer-events-none');
-            } else {
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-
-        // Close sidebar if main content is clicked on mobile
-        mainContent.addEventListener('click', () => {
-            if (window.innerWidth < 768 && sidebar.classList.contains('translate-x-0')) {
-                 sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
-                mainContent.classList.remove('opacity-50', 'pointer-events-none');
-            }
-        });
-    </script>
+    <!-- Modular JavaScript Entry Point -->
+    <script type="module" src="./js/payroll/main.js"></script>
 </body>
 </html>

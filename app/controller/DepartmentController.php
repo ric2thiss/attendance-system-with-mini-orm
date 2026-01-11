@@ -2,6 +2,13 @@
 
 class DepartmentController
 {
+    protected $departmentRepository;
+
+    public function __construct() {
+        $db = (new Database())->connect();
+        $this->departmentRepository = new DepartmentRepository($db);
+    }
+
     public function store()
     {
         return;
@@ -9,6 +16,6 @@ class DepartmentController
 
     public function getDepartmentLists()
     {
-        return Department::all();
+        return $this->departmentRepository->findAll();
     }
 }

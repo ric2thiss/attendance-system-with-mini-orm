@@ -2,11 +2,19 @@
 
 class VerificationLogController
 {
+    protected $verificationLogRepository;
+    protected $verificationTokenRepository;
+
+    public function __construct() {
+        $db = (new Database())->connect();
+        $this->verificationLogRepository = new VerificationLogRepository($db);
+        $this->verificationTokenRepository = new VerificationTokenRepository($db);
+    }
 
     public function store(array $data)
     {
         // Save log in verification_logs
-        VerificationLog::create([
+        $this->verificationLogRepository->create([
             "employee_id" => $data["employee_id"],
             "status"      => $data["status"],
             "device_id"   => $data["device_id"] ?? "KIOSK-01",
@@ -17,7 +25,7 @@ class VerificationLogController
         $confirmToken = bin2hex(random_bytes(16));
 
         // Save token to DB with current timestamp
-        VerificationToken::create([
+        $this->verificationTokenRepository->create([
             "employee_id" => $data["employee_id"],
             "status"      => $data["status"],
             "token"       => $confirmToken,
@@ -25,40 +33,32 @@ class VerificationLogController
         ]);
 
         return $confirmToken;
-
     }
 
     public function confirm(string $token)
     {
         // Fetch token from DB
-        $record = VerificationToken::query()
-            ->where("token", $token)
-            ->first();
+        $record = $this->verificationTokenRepository->findByToken($token);
 
         if (!$record) {
             return "<h2>❌ Invalid or expired token.</h2>";
         }
 
-        // Calculate token age
-        $createdAt = new DateTime($record->created_at);
-        $now       = new DateTime();
-        $diff      = $now->getTimestamp() - $createdAt->getTimestamp();
-
-        // Check if token expired (older than 1 minute)
-        if ($diff > 60) {
+        // Check if token is valid (not expired)
+        if (!$this->verificationTokenRepository->isTokenValid($token, 60)) {
             return "<h2>❌ Token expired.</h2>";
         }
 
         // Token is valid, return info
-        $employeeId = htmlspecialchars($record->employee_id);
-        $status     = htmlspecialchars($record->status);
+        $employeeId = is_object($record) ? $record->employee_id : $record['employee_id'];
+        $status = is_object($record) ? $record->status : $record['status'];
+        
+        $employeeId = htmlspecialchars($employeeId);
+        $status = htmlspecialchars($status);
 
         return "<h2>✅ Verification Successful</h2>
                 <p>Employee ID: {$employeeId}</p>
                 <p>Status: {$status}</p>
                 <p>Token: {$token}</p>";
     }
-
-
-
 }
