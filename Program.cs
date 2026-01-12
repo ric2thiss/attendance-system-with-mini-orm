@@ -19,6 +19,7 @@ namespace UareUSampleCSharp
             if (args.Length > 0 && args[0].StartsWith("biometrics://"))
             {
                 string employeeId = null;
+                string residentId = null;
                 string action = null;
 
                 try
@@ -32,10 +33,16 @@ namespace UareUSampleCSharp
                         foreach (var param in queryParams)
                         {
                             var parts = param.Split('=');
-                            if (parts.Length == 2 && parts[0] == "employee_id")
+                            if (parts.Length == 2)
                             {
-                                employeeId = Uri.UnescapeDataString(parts[1]);
-                                break;
+                                if (parts[0] == "employee_id")
+                                {
+                                    employeeId = Uri.UnescapeDataString(parts[1]);
+                                }
+                                else if (parts[0] == "resident_id")
+                                {
+                                    residentId = Uri.UnescapeDataString(parts[1]);
+                                }
                             }
                         }
                     }
@@ -50,7 +57,7 @@ namespace UareUSampleCSharp
                 Form formToRun = null;
                 if (action == "enroll")
                 {
-                    formToRun = new Enrollment(employeeId) { _sender = mainForm };
+                    formToRun = new Enrollment(employeeId, residentId) { _sender = mainForm };
                 }
                 else if (action == "identify")
                 {

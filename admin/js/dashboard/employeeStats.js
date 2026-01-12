@@ -14,6 +14,13 @@ export async function updateEmployeeAttendanceCounts(filter) {
         const data = await response.json();
 
         if (data.success) {
+            // Update the main Total Employees count with Total Present
+            const totalEmployeesMainCount = document.getElementById('total-employees-main-count');
+            if (totalEmployeesMainCount) {
+                totalEmployeesMainCount.textContent = data.total_present || 0;
+            }
+            
+            // Update detailed counts
             document.getElementById('total-present-count').textContent = data.total_present || 0;
             document.getElementById('total-absent-count').textContent = data.total_absent || 0;
             document.getElementById('total-late-count').textContent = data.total_late || 0;

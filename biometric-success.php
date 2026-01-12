@@ -1,5 +1,6 @@
 <?php
 $employeeId = $_GET['employee_id'] ?? null;
+$residentId = $_GET['resident_id'] ?? null;
 ?>
 <!DOCTYPE html>
 <html>
@@ -8,6 +9,10 @@ $employeeId = $_GET['employee_id'] ?? null;
 </head>
 <body>
   <h3>✅ Biometrics registered successfully!</h3>
-  <p>Employee ID: <?= htmlspecialchars($employeeId) ?></p>
+  <?php if ($employeeId): ?>
+    <p>Employee ID: <?= htmlspecialchars($employeeId) ?></p>
+  <?php elseif ($residentId): ?>
+    <p>Resident ID: <?= htmlspecialchars($residentId) ?></p>
+  <?php endif; ?>
 </body>
 </html>

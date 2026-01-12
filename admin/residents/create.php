@@ -52,32 +52,25 @@ function handleFileUpload($file, $uploadDir, $maxSize = 5242880) { // 5MB defaul
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $residentController = new ResidentController();
     
-    // Handle file uploads
-    $photoPath = null;
-    $biometricFilePath = null;
-    $biometricType = $_POST['biometric_type'] ?? '';
+    // Handle file uploads - 3 photos
+    $photoPaths = [];
+    $uploadDir = __DIR__ . '/../../storage/img/residents';
     
-    // Upload profile picture
-    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../../storage/img/residents';
-        $result = handleFileUpload($_FILES['profile_picture'], $uploadDir, 5242880); // 5MB
-        if (is_string($result)) {
-            $photoPath = $result;
-        } elseif (isset($result['error'])) {
-            $error = $result['error'];
+    // Upload up to 3 photos
+    for ($i = 1; $i <= 3; $i++) {
+        $fileKey = 'photo_' . $i;
+        if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
+            $result = handleFileUpload($_FILES[$fileKey], $uploadDir, 5242880); // 5MB
+            if (is_string($result)) {
+                $photoPaths[] = str_replace(__DIR__ . '/../../', '', $result);
+            } elseif (isset($result['error'])) {
+                $error = isset($error) ? $error . ' ' . $result['error'] : $result['error'];
+            }
         }
     }
     
-    // Upload biometric file
-    if (!empty($biometricType) && isset($_FILES['biometric_file']) && $_FILES['biometric_file']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../../storage/img/biometrics';
-        $result = handleFileUpload($_FILES['biometric_file'], $uploadDir, 10485760); // 10MB
-        if (is_string($result)) {
-            $biometricFilePath = $result;
-        } elseif (isset($result['error'])) {
-            $error = isset($error) ? $error . ' ' . $result['error'] : $result['error'];
-        }
-    }
+    // Store photos as JSON array (use first photo for backward compatibility if needed)
+    $photoPath = !empty($photoPaths) ? json_encode($photoPaths) : null;
     
     // Convert empty phil_sys_number to null to avoid UNIQUE constraint violation
     $philSysNumber = trim($_POST['phil_sys_number'] ?? '');
@@ -95,7 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         'place_of_birth_province' => trim($_POST['place_of_birth_province'] ?? ''),
         'blood_type' => trim($_POST['blood_type'] ?? ''),
         'civil_status_id' => !empty($_POST['civil_status_id']) ? intval($_POST['civil_status_id']) : null,
-        'photo_path' => $photoPath ? str_replace(__DIR__ . '/../../', '', $photoPath) : null,
+        'photo_path' => $photoPath,
     ];
     
     // Address data
@@ -123,16 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         'is_active' => isset($_POST['is_active']) ? intval($_POST['is_active']) : 1,
     ];
     
-    // Biometric data
-    $biometricData = null;
-    if (!empty($biometricType) && !empty($biometricFilePath)) {
-        $biometricData = [
-            'biometric_type' => $biometricType,
-            'file_path' => str_replace(__DIR__ . '/../../', '', $biometricFilePath),
-        ];
-    }
-    
-    $result = $residentController->store($data, $addressData, $statusData, $biometricData);
+    $result = $residentController->store($data, $addressData, $statusData, null);
     
     if ($result["success"]) {
         $success = $result["message"];
@@ -628,55 +612,48 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <div class="tab-content hidden" id="content-documents">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Photos & Biometrics</h2>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Profile Picture -->
+                        <div class="space-y-6">
+                            <!-- Resident Photos (3 photos) -->
                             <div>
-                                <label for="profile_picture" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Profile Picture
-                                </label>
-                                <div class="mt-1 flex items-center space-x-5">
-                                    <div class="flex-shrink-0">
-                                        <img id="profile_preview" class="h-20 w-20 rounded-full object-cover border-2 border-gray-300" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='12'%3ENo Image%3C/text%3E%3C/svg%3E" alt="Profile preview">
+                                <h3 class="text-md font-medium text-gray-700 mb-4">Resident Photos</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <?php for ($i = 1; $i <= 3; $i++): ?>
+                                    <div>
+                                        <label for="photo_<?= $i ?>" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Photo <?= $i ?>
+                                        </label>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-center">
+                                                <img id="photo_<?= $i ?>_preview" class="h-32 w-32 object-cover border-2 border-gray-300 rounded-lg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Crect width='128' height='128' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E" alt="Photo <?= $i ?> preview">
+                                            </div>
+                                            <input type="file" 
+                                                name="photo_<?= $i ?>" 
+                                                id="photo_<?= $i ?>" 
+                                                accept="image/*"
+                                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                                onchange="previewImage(this, 'photo_<?= $i ?>_preview')">
+                                            <p class="text-xs text-gray-500 text-center">JPG, PNG or GIF. Max 5MB</p>
+                                        </div>
                                     </div>
-                                    <div class="flex-1">
-                                        <input type="file" 
-                                            name="profile_picture" 
-                                            id="profile_picture" 
-                                            accept="image/*"
-                                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                            onchange="previewImage(this, 'profile_preview')">
-                                        <p class="mt-1 text-xs text-gray-500">JPG, PNG or GIF. Max size: 5MB</p>
-                                    </div>
+                                    <?php endfor; ?>
                                 </div>
                             </div>
 
-                            <!-- Biometric Type -->
-                            <div>
-                                <label for="biometric_type" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Biometric Type
-                                </label>
-                                <select name="biometric_type" id="biometric_type"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Select Biometric Type</option>
-                                    <option value="Signature" <?= (isset($_POST['biometric_type']) && $_POST['biometric_type'] === 'Signature') ? 'selected' : '' ?>>Signature</option>
-                                    <option value="Thumbmark" <?= (isset($_POST['biometric_type']) && $_POST['biometric_type'] === 'Thumbmark') ? 'selected' : '' ?>>Thumbmark</option>
-                                    <option value="Fingerprint" <?= (isset($_POST['biometric_type']) && $_POST['biometric_type'] === 'Fingerprint') ? 'selected' : '' ?>>Fingerprint</option>
-                                    <option value="Photo" <?= (isset($_POST['biometric_type']) && $_POST['biometric_type'] === 'Photo') ? 'selected' : '' ?>>Photo</option>
-                                </select>
-                                <p class="mt-1 text-xs text-gray-500">Select the type of biometric data</p>
-                            </div>
-
-                            <!-- Biometric File -->
-                            <div class="md:col-span-2">
-                                <label for="biometric_file" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Biometric File
-                                </label>
-                                <input type="file" 
-                                    name="biometric_file" 
-                                    id="biometric_file" 
-                                    accept="image/*,.pdf"
-                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                <p class="mt-1 text-xs text-gray-500">Upload biometric file (Image or PDF). Max size: 10MB</p>
+                            <!-- Fingerprint Registration -->
+                            <div class="border-t border-gray-200 pt-6">
+                                <h3 class="text-md font-medium text-gray-700 mb-4">Fingerprint Registration</h3>
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p class="text-sm text-gray-700 mb-4">
+                                        Register the resident's fingerprint using the biometric device. Click the button below to launch the fingerprint registration application.
+                                    </p>
+                                    <p class="text-xs text-gray-500 mb-4">
+                                        <strong>Note:</strong> Fingerprint registration will be available after the resident is created. Please save the resident first, then return to edit to register fingerprints.
+                                    </p>
+                                    <button type="button" disabled
+                                        class="px-6 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed">
+                                        Register Fingerprint (Available after creation)
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

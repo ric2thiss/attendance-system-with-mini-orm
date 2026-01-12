@@ -14,6 +14,13 @@ export async function updateVisitorCounts(filter) {
         const data = await response.json();
 
         if (data.success) {
+            // Update the main Total Residents count with Total Visitors
+            const totalResidentsMainCount = document.getElementById('total-residents-main-count');
+            if (totalResidentsMainCount) {
+                totalResidentsMainCount.textContent = data.total_visitors || 0;
+            }
+            
+            // Update detailed counts
             document.getElementById('total-visitors-count').textContent = data.total_visitors || 0;
             document.getElementById('resident-visitors-count').textContent = data.resident_visitors || 0;
             document.getElementById('non-resident-visitors-count').textContent = data.non_resident_visitors || 0;

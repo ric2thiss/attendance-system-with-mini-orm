@@ -12,11 +12,11 @@ let visitorTrafficChart = null;
  * Initialize Employee Attendance Chart
  * @param {string} filterType - Filter type: 'today', 'week', 'month', 'year'
  */
-export function initializeEmployeeAttendanceChart(filterType = 'month') {
+export async function initializeEmployeeAttendanceChart(filterType = 'month') {
     const ctx = document.getElementById('employeeAttendanceChart');
     if (!ctx) return;
 
-    const chartData = getChartData(filterType, 'attendance');
+    const chartData = await getChartData(filterType, 'attendance');
     
     // Destroy existing chart if it exists
     if (employeeAttendanceChart) {
@@ -92,11 +92,11 @@ export function initializeEmployeeAttendanceChart(filterType = 'month') {
  * Initialize Visitor Traffic Chart
  * @param {string} filterType - Filter type: 'today', 'week', 'month', 'year'
  */
-export function initializeVisitorTrafficChart(filterType = 'month') {
+export async function initializeVisitorTrafficChart(filterType = 'month') {
     const ctx = document.getElementById('visitorTrafficChart');
     if (!ctx) return;
 
-    const chartData = getChartData(filterType, 'visitor');
+    const chartData = await getChartData(filterType, 'visitor');
     
     // Destroy existing chart if it exists
     if (visitorTrafficChart) {
@@ -161,24 +161,24 @@ export function initializeVisitorTrafficChart(filterType = 'month') {
 /**
  * Initialize all charts with event listeners for filter dropdowns
  */
-export function initializeCharts() {
+export async function initializeCharts() {
     const defaultFilter = 'month';
-    initializeEmployeeAttendanceChart(defaultFilter);
-    initializeVisitorTrafficChart(defaultFilter);
+    await initializeEmployeeAttendanceChart(defaultFilter);
+    await initializeVisitorTrafficChart(defaultFilter);
 
     // Add event listeners for filter dropdowns
     const attendanceFilter = document.getElementById('attendance-filter');
     const visitorFilter = document.getElementById('visitor-filter');
 
     if (attendanceFilter) {
-        attendanceFilter.addEventListener('change', (e) => {
-            initializeEmployeeAttendanceChart(e.target.value);
+        attendanceFilter.addEventListener('change', async (e) => {
+            await initializeEmployeeAttendanceChart(e.target.value);
         });
     }
 
     if (visitorFilter) {
-        visitorFilter.addEventListener('change', (e) => {
-            initializeVisitorTrafficChart(e.target.value);
+        visitorFilter.addEventListener('change', async (e) => {
+            await initializeVisitorTrafficChart(e.target.value);
         });
     }
 }

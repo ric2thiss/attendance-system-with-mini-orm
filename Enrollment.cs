@@ -17,6 +17,7 @@ namespace UareUSampleCSharp
         int count;
 
         private string _employeeId;
+        private string _residentId;
         private Reader _reader;
 
         public Enrollment()
@@ -25,11 +26,19 @@ namespace UareUSampleCSharp
             AutoSelectReader();
         }
 
-        public Enrollment(string employeeId) : this()
+        public Enrollment(string employeeId) : this(employeeId, null)
+        {
+        }
+
+        public Enrollment(string employeeId, string residentId) : this()
         {
             if (!string.IsNullOrWhiteSpace(employeeId))
             {
                 _employeeId = employeeId;
+            }
+            if (!string.IsNullOrWhiteSpace(residentId))
+            {
+                _residentId = residentId;
             }
         }
 
@@ -143,13 +152,40 @@ namespace UareUSampleCSharp
             }
         }
 
-        private async Task SendEnrollToApiAsync(string employeeId, string templateBase64)
+        private async Task SendEnrollToApiAsync(string templateBase64)
         {
-            var data = new
+            // Determine which ID to use (employee_id takes precedence for backward compatibility)
+            bool isEmployee = !string.IsNullOrWhiteSpace(_employeeId);
+            bool isResident = !string.IsNullOrWhiteSpace(_residentId);
+            
+            if (!isEmployee && !isResident)
             {
-                employee_id = employeeId,
-                template = templateBase64
-            };
+                MessageBox.Show("⚠️ Enrollment cancelled: No ID provided from browser.",
+                    "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            object data;
+            string successUrl;
+            
+            if (isEmployee)
+            {
+                data = new
+                {
+                    employee_id = _employeeId,
+                    template = templateBase64
+                };
+                successUrl = "http://localhost/attendance-system/biometric-success.php?employee_id=" + _employeeId;
+            }
+            else
+            {
+                data = new
+                {
+                    resident_id = _residentId,
+                    template = templateBase64
+                };
+                successUrl = "http://localhost/attendance-system/biometric-success.php?resident_id=" + _residentId;
+            }
 
             var json = JsonConvert.SerializeObject(data);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -166,8 +202,7 @@ namespace UareUSampleCSharp
                     if (response.IsSuccessStatusCode)
                     {
                         MessageBox.Show("✅ Fingerprint enrolled successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        System.Diagnostics.Process.Start("http://localhost/attendance-system/biometric-success.php?employee_id=" + _employeeId
-);
+                        System.Diagnostics.Process.Start(successUrl);
                     }
                     else
                     {
@@ -224,14 +259,14 @@ namespace UareUSampleCSharp
                             return;
                         }
 
-                        if (string.IsNullOrWhiteSpace(_employeeId))
+                        if (string.IsNullOrWhiteSpace(_employeeId) && string.IsNullOrWhiteSpace(_residentId))
                         {
-                            MessageBox.Show("⚠️ Enrollment cancelled: Employee ID not provided from browser.",
+                            MessageBox.Show("⚠️ Enrollment cancelled: No ID provided from browser.",
                                 "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
 
-                        await SendEnrollToApiAsync(_employeeId, fmdBase64);
+                        await SendEnrollToApiAsync(fmdBase64);
 
                         preenrollmentFmds.Clear();
                         count = 0;
