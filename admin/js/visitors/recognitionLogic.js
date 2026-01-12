@@ -86,7 +86,8 @@ export class RecognitionLogic {
                         if (label !== "unknown") {
                             const person = this.labeledDescriptors.find(p => p.name === label);
                             if (person && this.onRecognizedCallback) {
-                                this.onRecognizedCallback(person.id, person.name);
+                                // Pass person data to callback
+                                this.onRecognizedCallback(person.id, person.name, person);
                             }
                         }
                     });

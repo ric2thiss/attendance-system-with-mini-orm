@@ -36,6 +36,7 @@ export class FaceRecognition {
 
     /**
      * Load labeled face descriptors from images
+     * Supports multiple photos per person (3 angles) for better recognition accuracy
      */
     async loadLabeledImages(labeledDescriptors) {
         // Access global faceapi variable from CDN
@@ -47,29 +48,56 @@ export class FaceRecognition {
         return Promise.all(
             labeledDescriptors.map(async (person) => {
                 try {
-                    const img = await faceapi.fetchImage(person.img);
+                    // Get array of images (3 angles) or fallback to single image
+                    const imageUrls = person.imgs || (person.img ? [person.img] : []);
                     
-                    // Try both TinyFaceDetector and SsdMobilenetv1 for robust detection on static image
-                    let detection = await faceapi
-                        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-                        .withFaceLandmarks()
-                        .withFaceDescriptor();
-
-                    if (!detection) {
-                        detection = await faceapi
-                            .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-                            .withFaceLandmarks()
-                            .withFaceDescriptor();
-                    }
-
-                    if (!detection) {
-                        console.warn(`⚠️ No face detected in ${person.img}. Skipping.`);
+                    if (imageUrls.length === 0) {
+                        console.warn(`⚠️ No images found for ${person.name}. Skipping.`);
                         return null;
                     }
 
-                    return new faceapi.LabeledFaceDescriptors(person.name, [detection.descriptor]);
+                    // Process all images for this person (3 angles)
+                    const descriptors = [];
+                    
+                    for (const imgUrl of imageUrls) {
+                        try {
+                            const img = await faceapi.fetchImage(imgUrl);
+                            
+                            // Try both TinyFaceDetector and SsdMobilenetv1 for robust detection on static image
+                            let detection = await faceapi
+                                .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                                .withFaceLandmarks()
+                                .withFaceDescriptor();
+
+                            if (!detection) {
+                                detection = await faceapi
+                                    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                                    .withFaceLandmarks()
+                                    .withFaceDescriptor();
+                            }
+
+                            if (detection) {
+                                descriptors.push(detection.descriptor);
+                                console.log(`✅ Face detected in ${imgUrl} for ${person.name}`);
+                            } else {
+                                console.warn(`⚠️ No face detected in ${imgUrl} for ${person.name}`);
+                            }
+                        } catch (error) {
+                            console.error(`Error processing image ${imgUrl} for ${person.name}:`, error);
+                        }
+                    }
+
+                    if (descriptors.length === 0) {
+                        console.warn(`⚠️ No valid face descriptors found for ${person.name}. Skipping.`);
+                        return null;
+                    }
+
+                    // Create LabeledFaceDescriptors with all descriptors (multiple angles)
+                    // This improves recognition accuracy by matching against all angles
+                    console.log(`✅ Loaded ${descriptors.length} face descriptor(s) for ${person.name}`);
+                    return new faceapi.LabeledFaceDescriptors(person.name, descriptors);
                 } catch (error) {
-                    console.error(`Error loading image or detecting face for ${person.name}:`, error);
+                    console.error(`Error loading images for ${person.name}:`, error);
                     return null;
                 }
             })

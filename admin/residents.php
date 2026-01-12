@@ -141,7 +141,7 @@ $searchQuery = $data['searchQuery'];
                     
                     <!-- Search Input, Search Button, and Filter -->
                     <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                        <form method="GET" action="" class="relative flex-1 sm:w-64 lg:w-80 flex items-center gap-2" id="searchForm">
+                        <form method="GET" action="" class="relative flex-1 sm:w-96 lg:w-[500px] flex items-center gap-2" id="searchForm">
                             <div class="relative flex-1">
                                 <input type="text" 
                                     name="search" 

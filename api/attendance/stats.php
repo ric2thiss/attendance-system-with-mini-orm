@@ -90,6 +90,7 @@ $totalOvertime = $overtimeResult ? (int)$overtimeResult->count : 0;
 echo json_encode([
     "success" => true,
     "filter" => $filter,
+    "total_employees" => $totalEmployees,
     "total_present" => $totalPresent,
     "total_absent" => $totalAbsent,
     "total_late" => $totalLate,

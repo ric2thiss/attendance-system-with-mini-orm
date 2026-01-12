@@ -11,7 +11,19 @@ $db = (new Database())->connect();
 $residentRepository = new ResidentRepository($db);
 $employeeRepository = new EmployeeRepository($db);
 $verificationLogRepository = new VerificationLogRepository($db);
-$totalResidents = $residentRepository->count();
+
+// Get accurate total residents count using direct SQL query
+try {
+    $stmt = $db->prepare("SELECT COUNT(*) as total FROM residents");
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalResidents = (int) ($result['total'] ?? 0);
+} catch (Exception $e) {
+    // Fallback to repository count if direct query fails
+    $totalResidents = $residentRepository->count();
+    error_log("Error fetching resident count: " . $e->getMessage());
+}
+
 $totalEmployees = $employeeRepository->getEmployeeCount();
 
 // Get visitor counts (default: all time, will be filtered via JavaScript/AJAX)

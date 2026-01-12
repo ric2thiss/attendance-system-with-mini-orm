@@ -68,14 +68,6 @@ class ResidentController
             ];
         }
 
-        // Validate status required fields if status data is provided
-        if (!empty($statusData) && empty($statusData['status_type'])) {
-            return [
-                "success" => false,
-                "message" => "Please select a status type for the resident."
-            ];
-        }
-
         return $this->residentRepository->createWithRelations($data, $addressData, $statusData, $biometricData);
     }
 
@@ -112,14 +104,6 @@ class ResidentController
             return [
                 "success" => false,
                 "message" => "Please fill in all required address fields (Barangay, Municipality/City, Province)"
-            ];
-        }
-
-        // Validate status required fields if status data is provided
-        if (!empty($statusData) && empty($statusData['status_type'])) {
-            return [
-                "success" => false,
-                "message" => "Please select a status type for the resident."
             ];
         }
 

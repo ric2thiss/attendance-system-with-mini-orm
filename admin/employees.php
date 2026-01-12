@@ -15,9 +15,18 @@ $perPage = 10; // Records per page
 $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
 
+// Get filters
+$filters = [];
+if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
+    $filters['department_id'] = intval($_GET['department_id']);
+}
+if (isset($_GET['position_id']) && !empty($_GET['position_id'])) {
+    $filters['position_id'] = intval($_GET['position_id']);
+}
+
 // Fetch data from controller
 $employeeController = new EmployeeController();
-$data = $employeeController->getPaginatedEmployees($currentPage, $perPage, $searchQuery);
+$data = $employeeController->getPaginatedEmployees($currentPage, $perPage, $searchQuery, $filters);
 
 $employees = $data['employees'];
 $pagination = $data['pagination'];
@@ -133,26 +142,48 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                 <!-- Controls: Search, Filter, and Add Button -->
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
                     
-                    <!-- Search Input -->
-                    <form method="GET" action="" class="relative w-full sm:w-1/2 lg:w-1/3">
-                        <input type="text" 
-                            name="search" 
-                            placeholder="Search employee name, ID, or position..." 
-                            value="<?= htmlspecialchars($searchQuery) ?>"
-                            class="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <?php if (!empty($searchQuery)): ?>
-                        <a href="?" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </a>
-                        <?php endif; ?>
-                    </form>
+                    <!-- Search Input, Search Button, and Filter -->
+                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <form method="GET" action="" class="relative flex-1 sm:w-96 lg:w-[500px] flex items-center gap-2" id="searchForm">
+                            <div class="relative flex-1">
+                                <input type="text" 
+                                    name="search" 
+                                    id="searchInput"
+                                    placeholder="Search employee name, ID, or position..." 
+                                    value="<?= htmlspecialchars($searchQuery) ?>"
+                                    class="w-full py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <?php if (!empty($searchQuery)): ?>
+                                <a href="?" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                Search
+                            </button>
+                            <!-- Preserve filter parameters -->
+                            <?php if (isset($_GET['department_id']) && !empty($_GET['department_id'])): ?>
+                                <input type="hidden" name="department_id" value="<?= htmlspecialchars($_GET['department_id']) ?>">
+                            <?php endif; ?>
+                            <?php if (isset($_GET['position_id']) && !empty($_GET['position_id'])): ?>
+                                <input type="hidden" name="position_id" value="<?= htmlspecialchars($_GET['position_id']) ?>">
+                            <?php endif; ?>
+                        </form>
+                        <!-- Filter Button -->
+                        <button type="button" id="filterButton" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                            </svg>
+                            Filters
+                        </button>
+                    </div>
 
                     <!-- Add Employee Button -->
-                    <button class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center" id="openAddEmployeeModal">
+                    <a href="employees/create.php" class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Add New Employee
-                    </button>
+                    </a>
                 </div>
 
                 <!-- Employee Table -->
@@ -187,7 +218,7 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                                     <?= htmlspecialchars(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')) ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    BARANGAY
+                                    <?= htmlspecialchars($employee->department_name ?? 'N/A') ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                     <?= htmlspecialchars($employee->position_name ?? '') ?>
@@ -199,17 +230,16 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center space-x-2">
-                                        <button 
+                                        <a href="employees/edit.php?id=<?= htmlspecialchars($employee->employee_id ?? '') ?>"
                                             class="editBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" 
-                                            data-id="<?= htmlspecialchars($employee->employee_id ?? '') ?>"
                                             title="Edit Employee">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                             Edit
-                                        </button>
+                                        </a>
                                         <button 
-                                            class="delete inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
+                                            class="deleteBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
                                             data-id="<?= htmlspecialchars($employee->employee_id ?? '') ?>"
                                             data-name="<?= htmlspecialchars(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')) ?>"
                                             title="Delete Employee">
@@ -233,7 +263,7 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                 <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
                     <div>
                         Showing <span class="font-medium"><?= $startRecord ?></span> to <span class="font-medium"><?= $endRecord ?></span> of <span class="font-medium"><?= $totalRecords ?></span> records
-                        <?php if (!empty($searchQuery)): ?>
+                        <?php if (!empty($searchQuery) || !empty($filters)): ?>
                             <span class="text-gray-500">(filtered)</span>
                         <?php endif; ?>
                     </div>
@@ -242,7 +272,17 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                     <nav class="flex space-x-1" aria-label="Pagination">
                         <?php
                         // Build query string for pagination links
-                        $queryString = !empty($searchQuery) ? '&search=' . urlencode($searchQuery) : '';
+                        $queryParams = [];
+                        if (!empty($searchQuery)) {
+                            $queryParams[] = 'search=' . urlencode($searchQuery);
+                        }
+                        if (!empty($filters['department_id'])) {
+                            $queryParams[] = 'department_id=' . $filters['department_id'];
+                        }
+                        if (!empty($filters['position_id'])) {
+                            $queryParams[] = 'position_id=' . $filters['position_id'];
+                        }
+                        $queryString = !empty($queryParams) ? '&' . implode('&', $queryParams) : '';
                         ?>
                         
                         <!-- Previous Button -->
@@ -297,192 +337,225 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
             </div>
 
 
-            
-                <!--Modal : Create Employee-->
-
-                <div id="addEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <!-- Delete Confirmation Modal -->
+                <div id="deleteEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="delete-modal-title" role="dialog" aria-modal="true">
                     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
 
                     <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform sm:my-8">
-
-                            <div class="flex items-start justify-between p-5 border-b border-gray-200">
-                                <h3 class="text-xl font-semibold text-gray-800" id="modal-title">
-                                    Add New Employee
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transition-all transform sm:my-8">
+                            <div class="p-6">
+                                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-800 text-center mb-2" id="delete-modal-title">
+                                    Delete Employee
                                 </h3>
-                                <button type="button" class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="document.getElementById('addEmployeeModal').classList.add('hidden')">
-                                    <span class="sr-only">Close modal</span>
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
+                                <p class="text-sm text-gray-600 text-center mb-6">
+                                    Are you sure you want to delete <span class="font-semibold text-gray-900" id="delete-employee-name"></span>?<br>
+                                    This action cannot be undone.
+                                </p>
+                                <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+                                    <button type="button" 
+                                        id="cancelDeleteBtn"
+                                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none">
+                                        Cancel
+                                    </button>
+                                    <button type="button" 
+                                        id="confirmDeleteBtn"
+                                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none transition-colors">
+                                        Delete Employee
+                                    </button>
+                                </div>
                             </div>
-
-                            <div class="p-6 space-y-4">
-                                <p class="text-sm text-gray-500">Fill out the details below to add a new employee to the directory.</p>
-                                
-                                <form class="space-y-4">
-                                    <div>
-                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
-                                        <input type="text" name="employee_id" id="employee_id" required 
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="<?= $lastEmployeeId ? 'Last ID: ' . htmlspecialchars($lastEmployeeId) : 'Enter employee ID' ?>">
-                                        <?php if ($lastEmployeeId): ?>
-                                            <p class="mt-1 text-xs text-gray-500">Last created employee ID: <span class="font-semibold text-gray-700"><?= htmlspecialchars($lastEmployeeId) ?></span></p>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <div>
-                                        <label for="resident_id" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
-                                        <select id="resident_id" name="resident_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Resident</option>
-                                            <?php foreach ($residents as $resident): ?>
-                                                <option value="<?= $resident->resident_id ?>"><?= $resident->first_name ?> <?= $resident->last_name ?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
-                                        <select id="department_id" name="department_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Department</option>
-                                            <?php foreach($departmentLists as $departmentList):?>
-                                                <option value="<?=$departmentList->department_id?>"><?=$departmentList->department_name?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="position_id" class="block text-sm font-medium text-gray-700">Position</label>
-                                        <select id="position_id" name="position_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Position</option>
-                                             <?php foreach($positions as $position):?>
-                                                <option value="<?=$position->position_id;?>"><?=$position->position_name;?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label for="hired_date" class="block text-sm font-medium text-gray-700">Hired Date</label>
-                                        <input type="date" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-                                </form>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
-                                <button type="button" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none" onclick="document.getElementById('addEmployeeModal').classList.add('hidden')">
-                                    Cancel
-                                </button>
-                                <button type="submit" id="addEmployeeBtn" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
-                                    Save Employee
-                                </button>
-                            </div>
-
                         </div>
                     </div>
                 </div>
+                <!-- End Delete Modal -->
 
-                <!-- End modal -->
-
-                <!-- Modal : Edit Employee -->
-
-                 <div id="editEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
+                <!-- Filter Modal -->
+                <div id="filterModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="filter-modal-title" role="dialog" aria-modal="true">
+                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" id="filterModalBackdrop" aria-hidden="true"></div>
 
                     <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform sm:my-8">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transition-all transform sm:my-8" id="filterModalContent">
+                            <form method="GET" action="">
+                                <div class="flex items-center justify-between p-5 border-b border-gray-200">
+                                    <h3 class="text-xl font-semibold text-gray-900" id="filter-modal-title">
+                                        Filter Employees
+                                    </h3>
+                                    <button type="button" id="closeFilterModal" class="text-gray-400 hover:text-gray-600 focus:outline-none p-1 rounded-full hover:bg-gray-100 transition">
+                                        <span class="sr-only">Close modal</span>
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
 
-                            <div class="flex items-start justify-between p-5 border-b border-gray-200">
-                                <h3 class="text-xl font-semibold text-gray-800" id="modal-title">
-                                    Employee Record
-                                </h3>
-                                <button type="button" class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="document.getElementById('editEmployeeModal').classList.add('hidden')">
-                                    <span class="sr-only">Close modal</span>
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                            </div>
+                                <div class="p-6 space-y-4">
+                                    <!-- Preserve search query -->
+                                    <?php if (!empty($searchQuery)): ?>
+                                        <input type="hidden" name="search" value="<?= htmlspecialchars($searchQuery) ?>">
+                                    <?php endif; ?>
 
-                            <div class="p-6 space-y-4">
-                                <p class="text-sm text-gray-500">Employee Profile</p>
-                                <div class="content">
+                                    <!-- Department Filter -->
                                     <div>
-                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
-                                        <input type="text" name="employee_id" id="edit_modal_employee_id" disabled class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <label for="filter_department_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Department
+                                        </label>
+                                        <select name="department_id" id="filter_department_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Departments</option>
+                                            <?php foreach($departmentLists as $departmentList):?>
+                                                <option value="<?=$departmentList->department_id?>" <?= (isset($filters['department_id']) && $filters['department_id'] == $departmentList->department_id) ? 'selected' : '' ?>><?=$departmentList->department_name?></option>
+                                            <?php endforeach ?>
+                                        </select>
                                     </div>
-                                    <div class="flex gap-2 mt-2">
-                                        <div>
-                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">First Name</label>
-                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                        <div>
-                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">Last Name</label>
-                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
+
+                                    <!-- Position Filter -->
+                                    <div>
+                                        <label for="filter_position_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Position
+                                        </label>
+                                        <select name="position_id" id="filter_position_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Positions</option>
+                                            <?php foreach($positions as $position):?>
+                                                <option value="<?=$position->position_id?>" <?= (isset($filters['position_id']) && $filters['position_id'] == $position->position_id) ? 'selected' : '' ?>><?=$position->position_name?></option>
+                                            <?php endforeach ?>
+                                        </select>
                                     </div>
                                 </div>
 
-                                
-                                <!-- <form class="space-y-4">
-                                    <div>
-                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
-                                        <input type="text" name="employee_id" id="employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-
-                                    <div>
-                                        <label for="resident_id" class="block text-sm font-medium text-gray-700">Choose from Residents</label>
-                                        <select id="resident_id" name="resident_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Resident</option>
-                                            <?php foreach ($residents as $resident): ?>
-                                                <option value="<?= $resident->resident_id ?>"><?= $resident->first_name ?> <?= $resident->last_name ?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
-                                        <select id="department_id" name="department_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Department</option>
-                                            <?php foreach($departmentLists as $departmentList):?>
-                                                <option value="<?=$departmentList->department_id?>"><?=$departmentList->department_name?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="position_id" class="block text-sm font-medium text-gray-700">Position</label>
-                                        <select id="position_id" name="position_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                            <option selected disabled>Select Position</option>
-                                             <?php foreach($positions as $position):?>
-                                                <option value="<?=$position->position_id;?>"><?=$position->position_name;?></option>
-                                            <?php endforeach ?>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label for="hired_date" class="block text-sm font-medium text-gray-700">Hired Date</label>
-                                        <input type="date" name="hired_date" id="hired_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div> -->
-                                </form>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
-                                <button type="button" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none" onclick="document.getElementById('editEmployeeModal').classList.add('hidden')">
-                                    Cancel
-                                </button>
-                                <button type="submit" id="addEmployeeBtn" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
-                                    Save Employee
-                                </button>
-                            </div>
-
+                                <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                                    <a href="?" class="w-full sm:w-auto px-6 py-2 text-center text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition">
+                                        Clear Filters
+                                    </a>
+                                    <button type="submit" class="w-full sm:w-auto px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+                                        Apply Filters
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
-
-                <!-- End modal -->
+                <!-- End Filter Modal -->
 
         </main>
     </div>
 
-    <!-- Pass PHP config values to JavaScript via meta tags -->
-    <meta name="employees-api-url" content="<?php echo htmlspecialchars(API_ENDPOINT_EMPLOYEES_STORE); ?>">
-    
     <!-- Modular JavaScript Entry Point -->
-    <script type="module" 
-            data-employees-api-url="<?php echo htmlspecialchars(API_ENDPOINT_EMPLOYEES_STORE); ?>"
-            src="./js/employees/main.js"></script>
+    <script type="module" src="./js/employees/main.js"></script>
+    <script>
+        // Delete functionality
+        let employeeToDelete = null;
+        const deleteModal = document.getElementById('deleteEmployeeModal');
+        const deleteEmployeeName = document.getElementById('delete-employee-name');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+        // Handle delete button clicks
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('deleteBtn') || e.target.closest('.deleteBtn')) {
+                const btn = e.target.classList.contains('deleteBtn') ? e.target : e.target.closest('.deleteBtn');
+                const employeeId = btn.dataset.id;
+                const employeeName = btn.dataset.name || 'this employee';
+                
+                employeeToDelete = employeeId;
+                deleteEmployeeName.textContent = employeeName;
+                deleteModal.classList.remove('hidden');
+            }
+        });
+
+        // Cancel delete
+        cancelDeleteBtn.addEventListener('click', () => {
+            deleteModal.classList.add('hidden');
+            employeeToDelete = null;
+        });
+
+        // Close modal on backdrop click
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target.id === 'deleteEmployeeModal') {
+                deleteModal.classList.add('hidden');
+                employeeToDelete = null;
+            }
+        });
+
+        // Confirm delete
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (!employeeToDelete) return;
+
+            const btn = confirmDeleteBtn;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
+
+            try {
+                const response = await fetch(`../api/employees/delete.php?id=${encodeURIComponent(employeeToDelete)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success message
+                    alert(result.message || 'Employee deleted successfully');
+                    // Reload page
+                    window.location.reload();
+                } else {
+                    alert(result.error || 'Failed to delete employee. Please try again.');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('An error occurred while deleting the employee. Please try again.');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        });
+
+        // Close on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) {
+                deleteModal.classList.add('hidden');
+                employeeToDelete = null;
+            }
+        });
+
+        // Filter Modal functionality
+        const filterModal = document.getElementById('filterModal');
+        const filterButton = document.getElementById('filterButton');
+        const closeFilterModal = document.getElementById('closeFilterModal');
+        const filterModalBackdrop = document.getElementById('filterModalBackdrop');
+
+        // Open filter modal
+        if (filterButton) {
+            filterButton.addEventListener('click', () => {
+                filterModal.classList.remove('hidden');
+            });
+        }
+
+        // Close filter modal
+        if (closeFilterModal) {
+            closeFilterModal.addEventListener('click', () => {
+                filterModal.classList.add('hidden');
+            });
+        }
+
+        // Close on backdrop click
+        if (filterModalBackdrop) {
+            filterModalBackdrop.addEventListener('click', () => {
+                filterModal.classList.add('hidden');
+            });
+        }
+
+        // Close on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !filterModal.classList.contains('hidden')) {
+                filterModal.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>
