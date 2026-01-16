@@ -129,6 +129,9 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                         <h1 class="text-2xl font-semibold text-gray-800">Employee Directory</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage all current and past employees in one place.</p>
                     </div>
+                    <div class="flex items-center gap-4">
+                        <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+                    </div>
                 </div>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],

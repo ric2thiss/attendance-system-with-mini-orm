@@ -71,7 +71,7 @@ export class StatusUpdater {
         if (this.userPhoto) {
             this.userPhoto.src = personDetails ? personDetails.img : 'https://placehold.co/80x80/007bff/white?text=R';
         }
-        if (this.userAction) this.userAction.textContent = 'CHECK-IN LOGGED!';
+        if (this.userAction) this.userAction.textContent = 'LOG BOOK ENTRY';
         if (this.userDetails) this.userDetails.textContent = `Resident: ${name}`;
         if (this.userTime) this.userTime.textContent = `Time: ${timeString}`;
     }
@@ -87,5 +87,19 @@ export class StatusUpdater {
                 initialLogItem.remove();
             }
         }
+    }
+
+    /**
+     * Reset status to ready state - clear recognized user display
+     */
+    resetToReady() {
+        if (this.recognizedUserDiv) {
+            this.recognizedUserDiv.classList.add('hidden');
+        }
+        if (this.statusIcon) {
+            this.statusIcon.classList.remove('hidden', 'text-red-500', 'text-yellow-500', 'animate-pulse');
+            this.statusIcon.classList.add('text-green-500');
+        }
+        this.updateReady();
     }
 }

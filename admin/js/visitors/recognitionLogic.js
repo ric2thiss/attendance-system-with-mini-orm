@@ -107,6 +107,13 @@ export class RecognitionLogic {
     }
 
     /**
+     * Check if recognition is currently running
+     */
+    isRunning() {
+        return this.detectionIntervalId !== null;
+    }
+
+    /**
      * Check if person is already logged today
      */
     isLoggedToday(id) {
@@ -122,5 +129,13 @@ export class RecognitionLogic {
             this.loggedToday.delete(id);
             console.log(`Person ${id} is ready for a new log entry.`);
         }, duration);
+    }
+
+    /**
+     * Reset logged state - clear all logged entries
+     */
+    resetLoggedState() {
+        this.loggedToday.clear();
+        console.log('Recognition state reset - ready for new face capture.');
     }
 }

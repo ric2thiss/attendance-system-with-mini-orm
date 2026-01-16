@@ -38,67 +38,57 @@ switch($filter) {
 $startDateStr = $startDate->format('Y-m-d H:i:s');
 $endDateStr = $endDate->format('Y-m-d H:i:s');
 
-// Get visitor counts from verification_log
+// Get visitor counts from visitor_logs table
 $pdo = (new Database())->connect();
 
-// Total visitors in date range using whereBetween
-$totalVisitors = VerificationLog::query()
+// Total visitors in date range
+$totalVisitors = VisitorLog::query()
     ->whereBetween('created_at', [$startDateStr, $endDateStr])
     ->count();
 
-// Resident visitors: verifications that link to employees (who are residents)
-// Use raw SQL query for complex join with count
+// Resident visitors: visitors where is_resident = 1
 $stmt = $pdo->prepare("
-    SELECT COUNT(DISTINCT verification_log.id) as count
-    FROM verification_log
-    INNER JOIN employees ON verification_log.employee_id = employees.employee_id
-    INNER JOIN residents ON employees.resident_id = residents.resident_id
-    WHERE verification_log.created_at >= ? AND verification_log.created_at <= ?
+    SELECT COUNT(*) as count
+    FROM visitor_logs
+    WHERE created_at >= ? AND created_at <= ?
+    AND is_resident = 1
 ");
 $stmt->execute([$startDateStr, $endDateStr]);
-$result = $stmt->fetch(PDO::FETCH_OBJ);
+$result = $stmt->fetch(PDO::FETCH_ASSOC);
+$totalResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
 
-$totalResidentVisitors = $result ? (int)$result->count : 0;
-$totalNonResidentVisitors = max(0, $totalVisitors - $totalResidentVisitors);
+// Non-resident visitors: visitors where is_resident = 0
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) as count
+    FROM visitor_logs
+    WHERE created_at >= ? AND created_at <= ?
+    AND is_resident = 0
+");
+$stmt->execute([$startDateStr, $endDateStr]);
+$result = $stmt->fetch(PDO::FETCH_ASSOC);
+$totalNonResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
 
-// Count Online Appointment visitors first (based on status field - adjust status values as needed)
-// Prioritize online/appointment status to make counts mutually exclusive
+// Count Online Appointment visitors: visitors where had_booking = 1
 $onlineStmt = $pdo->prepare("
-    SELECT COUNT(DISTINCT verification_log.id) as count
-    FROM verification_log
-    WHERE verification_log.created_at >= ? AND verification_log.created_at <= ?
-    AND (
-        LOWER(verification_log.status) LIKE '%online%'
-        OR LOWER(verification_log.status) LIKE '%appointment%'
-        OR LOWER(verification_log.status) LIKE '%web%'
-        OR LOWER(verification_log.status) = 'online'
-        OR LOWER(verification_log.status) = 'appointment'
-    )
+    SELECT COUNT(*) as count
+    FROM visitor_logs
+    WHERE created_at >= ? AND created_at <= ?
+    AND had_booking = 1
 ");
 $onlineStmt->execute([$startDateStr, $endDateStr]);
-$onlineResult = $onlineStmt->fetch(PDO::FETCH_OBJ);
-$totalOnlineAppointment = $onlineResult ? (int)$onlineResult->count : 0;
+$onlineResult = $onlineStmt->fetch(PDO::FETCH_ASSOC);
+$totalOnlineAppointment = $onlineResult ? (int)($onlineResult['count'] ?? 0) : 0;
 
-// Count Walk-in visitors (excludes online/appointment to make mutually exclusive)
+// Count Walk-in visitors: visitors where had_booking = 0
 $walkinStmt = $pdo->prepare("
-    SELECT COUNT(DISTINCT verification_log.id) as count
-    FROM verification_log
-    WHERE verification_log.created_at >= ? AND verification_log.created_at <= ?
-    AND (
-        LOWER(verification_log.status) LIKE '%walk%in%' 
-        OR LOWER(verification_log.status) LIKE '%walkin%'
-        OR LOWER(verification_log.status) LIKE '%in-person%'
-        OR LOWER(verification_log.status) LIKE '%inperson%'
-        OR (
-            LOWER(verification_log.status) NOT LIKE '%online%'
-            AND LOWER(verification_log.status) NOT LIKE '%appointment%'
-            AND LOWER(verification_log.status) NOT LIKE '%web%'
-        )
-    )
+    SELECT COUNT(*) as count
+    FROM visitor_logs
+    WHERE created_at >= ? AND created_at <= ?
+    AND had_booking = 0
 ");
 $walkinStmt->execute([$startDateStr, $endDateStr]);
-$walkinResult = $walkinStmt->fetch(PDO::FETCH_OBJ);
-$totalWalkin = $walkinResult ? (int)$walkinResult->count : 0;
+$walkinResult = $walkinStmt->fetch(PDO::FETCH_ASSOC);
+$totalWalkin = $walkinResult ? (int)($walkinResult['count'] ?? 0) : 0;
 
 echo json_encode([
     "success" => true,

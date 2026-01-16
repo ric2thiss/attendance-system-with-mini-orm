@@ -3,8 +3,9 @@
  * Handles form display and submission for non-resident visitors
  */
 export class NonResidentForm {
-    constructor(visitorAPI) {
+    constructor(visitorAPI, onTryAgain = null) {
         this.visitorAPI = visitorAPI;
+        this.onTryAgain = onTryAgain;
         this.formModal = null;
         this.createFormModal();
     }
@@ -96,13 +97,18 @@ export class NonResidentForm {
                     </div>
 
                     <!-- Modal Footer -->
-                    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
-                        <button id="non-resident-cancel" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            Cancel
+                    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between items-center">
+                        <button id="non-resident-try-again" class="px-4 py-2 text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors">
+                            Try Again (Face Recognition)
                         </button>
-                        <button id="non-resident-submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            Continue
-                        </button>
+                        <div class="flex justify-end space-x-3 ml-auto">
+                            <button id="non-resident-cancel" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                Cancel
+                            </button>
+                            <button id="non-resident-submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Continue
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -115,6 +121,7 @@ export class NonResidentForm {
         const closeBtn = document.getElementById('non-resident-close');
         const cancelBtn = document.getElementById('non-resident-cancel');
         const submitBtn = document.getElementById('non-resident-submit');
+        const tryAgainBtn = document.getElementById('non-resident-try-again');
         const form = document.getElementById('non-resident-form');
 
         if (closeBtn) {
@@ -125,6 +132,13 @@ export class NonResidentForm {
         }
         if (submitBtn) {
             submitBtn.addEventListener('click', () => this.handleSubmit());
+        }
+        if (tryAgainBtn) {
+            tryAgainBtn.addEventListener('click', () => {
+                if (this.onTryAgain && typeof this.onTryAgain === 'function') {
+                    this.onTryAgain();
+                }
+            });
         }
 
         // Close on backdrop click

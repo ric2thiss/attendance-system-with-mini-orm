@@ -51,6 +51,39 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             color: #374151;
             border-bottom-color: #d1d5db;
         }
+        /* Scrollable table container */
+        .table-container {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+            width: 100%;
+            position: relative;
+        }
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+        /* Prevent body horizontal scroll */
+        body {
+            overflow-x: hidden;
+        }
+        /* Ensure main content doesn't overflow */
+        main {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -109,6 +142,14 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                                 Positions
                             </span>
                         </button>
+                        <button type="button" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="attendance-windows" id="tab-attendance-windows">
+                            <span class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Attendance Windows
+                            </span>
+                        </button>
                     </nav>
                 </div>
 
@@ -116,10 +157,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <div class="tab-content" id="content-civil-status">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-800">Civil Status</h2>
-                        <button onclick="openModal('civil-status', null)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
+                        <button onclick="openModal('civil-status', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Add Civil Status
                         </button>
                     </div>
@@ -143,10 +182,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <div class="tab-content hidden" id="content-departments">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-800">Departments</h2>
-                        <button onclick="openModal('departments', null)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
+                        <button onclick="openModal('departments', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Add Department
                         </button>
                     </div>
@@ -170,10 +207,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <div class="tab-content hidden" id="content-positions">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-800">Positions</h2>
-                        <button onclick="openModal('positions', null)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
+                        <button onclick="openModal('positions', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Add Position
                         </button>
                     </div>
@@ -188,6 +223,33 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                             </thead>
                             <tbody id="positions-table" class="bg-white divide-y divide-gray-200">
                                 <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Attendance Windows -->
+                <div class="tab-content hidden" id="content-attendance-windows">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Attendance Windows</h2>
+                        <button onclick="openModal('attendance-windows', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Add Window
+                        </button>
+                    </div>
+                    <div class="table-container rounded-lg border border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Label</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Start Time</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">End Time</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-windows-table" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -211,11 +273,14 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <form id="modal-form" onsubmit="handleSubmit(event)">
                     <input type="hidden" id="modal-id" name="id">
                     <input type="hidden" id="modal-type" name="type">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2" id="modal-label">Name</label>
-                        <input type="text" id="modal-input" name="name" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter name">
+                    <div id="modal-form-content">
+                        <!-- Default form content (for civil-status, departments, positions) -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2" id="modal-label">Name</label>
+                            <input type="text" id="modal-input" name="name" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter name">
+                        </div>
                     </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">
@@ -258,19 +323,29 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 endpoint: 'civil-status.php',
                 nameField: 'status_name',
                 label: 'Status Name',
-                title: 'Civil Status'
+                title: 'Civil Status',
+                isSimple: true
             },
             'departments': {
                 endpoint: 'departments.php',
                 nameField: 'department_name',
                 label: 'Department Name',
-                title: 'Department'
+                title: 'Department',
+                isSimple: true
             },
             'positions': {
                 endpoint: 'positions.php',
                 nameField: 'position_name',
                 label: 'Position Name',
-                title: 'Position'
+                title: 'Position',
+                isSimple: true
+            },
+            'attendance-windows': {
+                endpoint: 'attendance-windows.php',
+                nameField: 'label',
+                label: 'Window Label',
+                title: 'Attendance Window',
+                isSimple: false
             }
         };
 
@@ -310,30 +385,80 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                     const items = Array.isArray(result.data) ? result.data : [result.data];
                     
                     if (items.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No items found. Click "Add" to create one.</td></tr>';
+                        const colspan = type === 'attendance-windows' ? '5' : '3';
+                        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-gray-500">No items found. Click "Add" to create one.</td></tr>`;
                         return;
                     }
 
-                    tableBody.innerHTML = items.map(item => {
-                        const id = isObject(item) ? item[`${type === 'civil-status' ? 'civil_status_id' : type === 'departments' ? 'department_id' : 'position_id'}`] : item.id;
-                        const name = isObject(item) ? item[config.nameField] : item.name;
-                        return `
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${id}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(name)}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
-                                    <button onclick="openModal('${type}', ${id})" class="text-blue-600 hover:text-blue-900">Edit</button>
-                                    <button onclick="openDeleteModal('${type}', ${id}, '${escapeHtml(name)}')" class="text-red-600 hover:text-red-900">Delete</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
+                    if (type === 'attendance-windows') {
+                        // Special handling for attendance windows table
+                        tableBody.innerHTML = items.map(item => {
+                            const id = isObject(item) ? item.window_id : item.id;
+                            const label = isObject(item) ? item.label : item.label;
+                            const startTime = isObject(item) ? item.start_time : item.start_time;
+                            const endTime = isObject(item) ? item.end_time : item.end_time;
+                            return `
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${escapeHtml(label)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(startTime)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(endTime)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <button onclick="openModal('${type}', ${id})" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" title="Edit">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                                Edit
+                                            </button>
+                                            <button onclick="openDeleteModal('${type}', ${id}, '${escapeHtml(label)}')" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" title="Delete">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    } else {
+                        // Default table rendering for simple entities
+                        tableBody.innerHTML = items.map(item => {
+                            const id = isObject(item) ? item[`${type === 'civil-status' ? 'civil_status_id' : type === 'departments' ? 'department_id' : 'position_id'}`] : item.id;
+                            const name = isObject(item) ? item[config.nameField] : item.name;
+                            return `
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(name)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <button onclick="openModal('${type}', ${id})" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" title="Edit">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                                Edit
+                                            </button>
+                                            <button onclick="openDeleteModal('${type}', ${id}, '${escapeHtml(name)}')" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" title="Delete">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
                 } else {
-                    tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>';
+                    const colspan = type === 'attendance-windows' ? '5' : '3';
+                    tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>`;
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>';
+                const colspan = type === 'attendance-windows' ? '5' : '3';
+                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>`;
             }
         }
 
@@ -352,27 +477,87 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             const config = tabConfig[type];
             const modal = document.getElementById('modal');
             const title = document.getElementById('modal-title');
-            const label = document.getElementById('modal-label');
-            const input = document.getElementById('modal-input');
             const typeInput = document.getElementById('modal-type');
             const idInput = document.getElementById('modal-id');
+            const formContent = document.getElementById('modal-form-content');
 
             typeInput.value = type;
             idInput.value = id || '';
             title.textContent = id ? `Edit ${config.title}` : `Add ${config.title}`;
-            label.textContent = config.label;
-            input.value = '';
 
-            if (id) {
-                // Load existing data
-                fetch(`${API_BASE}${config.endpoint}?id=${id}`)
-                    .then(res => res.json())
-                    .then(result => {
-                        if (result.success && result.data) {
-                            const item = result.data;
-                            input.value = isObject(item) ? item[config.nameField] : item.name;
-                        }
-                    });
+            if (type === 'attendance-windows') {
+                // Custom form for attendance windows
+                formContent.innerHTML = `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Window Label</label>
+                        <input type="text" id="modal-label-input" name="label" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="e.g., morning_in">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                        <input type="time" id="modal-start-time" name="start_time" required step="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                        <input type="time" id="modal-end-time" name="end_time" required step="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                `;
+
+                if (id) {
+                    // Load existing data
+                    fetch(`${API_BASE}${config.endpoint}?id=${id}`)
+                        .then(res => res.json())
+                        .then(result => {
+                            if (result.success && result.data) {
+                                const item = result.data;
+                                const startTime = isObject(item) ? item.start_time : item.start_time;
+                                const endTime = isObject(item) ? item.end_time : item.end_time;
+                                
+                                // Convert HH:MM:SS to HH:MM for time input (HTML5 time inputs only accept HH:MM)
+                                const formatTimeForInput = (time) => {
+                                    if (!time) return '';
+                                    return time.substring(0, 5); // Take only HH:MM
+                                };
+                                
+                                document.getElementById('modal-label-input').value = isObject(item) ? item.label : item.label;
+                                document.getElementById('modal-start-time').value = formatTimeForInput(startTime);
+                                document.getElementById('modal-end-time').value = formatTimeForInput(endTime);
+                            }
+                        });
+                } else {
+                    // Clear inputs for new window
+                    document.getElementById('modal-label-input').value = '';
+                    document.getElementById('modal-start-time').value = '';
+                    document.getElementById('modal-end-time').value = '';
+                }
+            } else {
+                // Default form for simple entities
+                formContent.innerHTML = `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" id="modal-label">${config.label}</label>
+                        <input type="text" id="modal-input" name="name" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter ${config.label.toLowerCase()}">
+                    </div>
+                `;
+
+                const input = document.getElementById('modal-input');
+                if (id) {
+                    // Load existing data
+                    fetch(`${API_BASE}${config.endpoint}?id=${id}`)
+                        .then(res => res.json())
+                        .then(result => {
+                            if (result.success && result.data) {
+                                const item = result.data;
+                                input.value = isObject(item) ? item[config.nameField] : item.name;
+                            }
+                        });
+                } else {
+                    input.value = '';
+                }
             }
 
             modal.classList.remove('hidden');
@@ -388,7 +573,30 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             const type = formData.get('type');
             const id = formData.get('id');
             const config = tabConfig[type];
-            const data = { [config.nameField]: formData.get('name') };
+            
+            let data;
+            if (type === 'attendance-windows') {
+                // Ensure time format is HH:MM:SS (HTML5 time inputs return HH:MM)
+                let startTime = formData.get('start_time');
+                let endTime = formData.get('end_time');
+                if (startTime && !startTime.includes(':')) {
+                    startTime = startTime + ':00';
+                } else if (startTime && startTime.split(':').length === 2) {
+                    startTime = startTime + ':00';
+                }
+                if (endTime && !endTime.includes(':')) {
+                    endTime = endTime + ':00';
+                } else if (endTime && endTime.split(':').length === 2) {
+                    endTime = endTime + ':00';
+                }
+                data = {
+                    label: formData.get('label'),
+                    start_time: startTime,
+                    end_time: endTime
+                };
+            } else {
+                data = { [config.nameField]: formData.get('name') };
+            }
 
             const url = `${API_BASE}${config.endpoint}`;
             const method = id ? 'PUT' : 'POST';

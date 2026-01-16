@@ -18,11 +18,15 @@ class AuthController
      */
     public function login(string $usernameOrEmail, string $password): array
     {
-        // Find admin by username or email
-        $admin = $this->adminRepository->findByUsername($usernameOrEmail);
+        // Find admin by username or email (without filtering by is_active to detect locked accounts)
+        $admin = Admin::query()
+            ->where("username", $usernameOrEmail)
+            ->first();
         
         if (!$admin) {
-            $admin = $this->adminRepository->findByEmail($usernameOrEmail);
+            $admin = Admin::query()
+                ->where("email", $usernameOrEmail)
+                ->first();
         }
 
         if (!$admin) {
@@ -45,11 +49,11 @@ class AuthController
             ];
         }
 
-        // Check if admin is active
+        // Check if admin account is locked (is_active = 0 means locked)
         if (!$admin["is_active"]) {
             return [
                 "success" => false,
-                "message" => "Account is deactivated. Please contact administrator."
+                "message" => "Your account has been locked by the administrator. Please contact support for assistance."
             ];
         }
 
@@ -147,8 +151,16 @@ class AuthController
      * @param string $redirectTo
      * @return void
      */
-    public static function requireAuth(string $redirectTo = "/attendance-system/auth/login.php"): void
+    public static function requireAuth(string $redirectTo = null): void
     {
+        if (!defined("BASE_URL")) {
+            require_once __DIR__ . "/../../config/app.config.php";
+        }
+        
+        if ($redirectTo === null) {
+            $redirectTo = BASE_URL . "/auth/login.php";
+        }
+        
         if (!self::check()) {
             header("Location: " . $redirectTo);
             exit;

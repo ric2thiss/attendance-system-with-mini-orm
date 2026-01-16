@@ -13,6 +13,11 @@ namespace UareUSampleCSharp
 {
     public partial class Verification : Form
     {
+        // ⚠️ CONFIGURATION: Base URL of the attendance system
+        // Change this if your folder name or domain is different
+        // Example: "http://localhost/attendance" or "http://localhost/attendance-system"
+        private const string BASE_URL = "http://localhost/attendance-system";
+
         public Form_Main _sender;
 
         private const int PROBABILITY_ONE = 0x7fffffff;
@@ -42,7 +47,7 @@ namespace UareUSampleCSharp
             var client = new HttpClient();
             // OLD ENDPOINT (backward compatible): http://localhost/attendance-system/api/services.php?resource=templates
             // NEW ENDPOINT: http://localhost/attendance-system/api/templates/index.php
-            var response = await client.GetAsync("http://localhost/attendance-system/api/templates/index.php");
+            var response = await client.GetAsync(BASE_URL + "/api/templates/index.php");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -88,7 +93,7 @@ namespace UareUSampleCSharp
                 var json = JsonConvert.SerializeObject(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 //http://localhost:8000/api/biometric/verify
-                var response = await client.PostAsync("http://localhost/attendance-system/biometricVerification.php", content);
+                var response = await client.PostAsync(BASE_URL + "/biometricVerification.php", content);
                 var responseString = await response.Content.ReadAsStringAsync();
 
 
@@ -152,14 +157,14 @@ namespace UareUSampleCSharp
                             var json = JsonConvert.SerializeObject(payload);
                             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                            var response = await client.PostAsync("http://localhost/attendance-system/verify.php", content);
+                            var response = await client.PostAsync(BASE_URL + "/verify.php", content);
                             var confirmToken = await response.Content.ReadAsStringAsync();
                             confirmToken = confirmToken.Trim();
 
                             // 🔹 Step 2: Open confirmation page in browser with token
                             Process.Start(new ProcessStartInfo
                             {
-                                FileName = $"http://localhost/attendance-system/verify.php?confirm={confirmToken}",
+                                FileName = $"{BASE_URL}/verify.php?confirm={confirmToken}",
                                 UseShellExecute = true
                             });
 

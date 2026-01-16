@@ -10,14 +10,9 @@ export class TableRenderer {
     /**
      * Helper function to get window text
      */
-    getWindowText(window) {
-        const windowMap = {
-            morning_in: "Morning In",
-            morning_out: "Morning Out",
-            afternoon_in: "Afternoon In",
-            afternoon_out: "Afternoon Out",
-        };
-        return windowMap[window] || "Unknown Window";
+    getWindowText(window, windowLabel = null) {
+        // Prefer window_label if available, otherwise use window
+        return windowLabel || window || "";
     }
 
     /**
@@ -53,8 +48,8 @@ export class TableRenderer {
         const lastName = resident?.last_name || "";
         const fullName = `${firstName} ${lastName}`.trim() || "Unnamed";
 
-        // Get window text
-        const windowText = this.getWindowText(attendance.window);
+        // Get window text (prefer window_label if available)
+        const windowText = this.getWindowText(attendance.window, attendance.window_label);
 
         // Create new row with data attribute for duplicate detection
         const newRow = document.createElement("tr");
@@ -80,13 +75,8 @@ export class TableRenderer {
     /**
      * Export window text helper for other modules
      */
-    static getWindowText(window) {
-        const windowMap = {
-            morning_in: "Morning In",
-            morning_out: "Morning Out",
-            afternoon_in: "Afternoon In",
-            afternoon_out: "Afternoon Out",
-        };
-        return windowMap[window] || "Unknown Window";
+    static getWindowText(window, windowLabel = null) {
+        // Prefer window_label if available, otherwise use window
+        return windowLabel || window || "";
     }
 }

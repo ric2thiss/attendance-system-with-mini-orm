@@ -3,8 +3,9 @@
  * Handles displaying booking information or available services
  */
 export class BookingModal {
-    constructor() {
+    constructor(onTryAgain = null) {
         this.modal = null;
+        this.onTryAgain = onTryAgain;
         this.createModal();
     }
 
@@ -71,10 +72,15 @@ export class BookingModal {
                     </div>
 
                     <!-- Modal Footer -->
-                    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
-                        <button id="modal-cancel" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            Close
+                    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between items-center">
+                        <button id="modal-try-again" class="px-4 py-2 text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors hidden">
+                            Try Again (Face Recognition)
                         </button>
+                        <div class="flex justify-end space-x-3 ml-auto">
+                            <button id="modal-cancel" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -87,12 +93,20 @@ export class BookingModal {
         // Add event listeners
         const closeBtn = document.getElementById('modal-close');
         const cancelBtn = document.getElementById('modal-cancel');
+        const tryAgainBtn = document.getElementById('modal-try-again');
         
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.hide());
         }
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => this.hide());
+        }
+        if (tryAgainBtn) {
+            tryAgainBtn.addEventListener('click', () => {
+                if (this.onTryAgain && typeof this.onTryAgain === 'function') {
+                    this.onTryAgain();
+                }
+            });
         }
 
         // Close on backdrop click
@@ -174,6 +188,12 @@ export class BookingModal {
         // Hide services section
         const servicesSection = document.getElementById('services-section');
         if (servicesSection) servicesSection.classList.add('hidden');
+        
+        // Hide try again button when booking is shown (has appointment)
+        const tryAgainBtn = document.getElementById('modal-try-again');
+        if (tryAgainBtn) {
+            tryAgainBtn.classList.add('hidden');
+        }
 
         // Update modal title
         const modalTitle = document.getElementById('modal-title');
@@ -216,6 +236,12 @@ export class BookingModal {
         const servicesList = document.getElementById('services-list');
         
         if (servicesSection) servicesSection.classList.remove('hidden');
+        
+        // Show try again button when services are shown (no appointment)
+        const tryAgainBtn = document.getElementById('modal-try-again');
+        if (tryAgainBtn) {
+            tryAgainBtn.classList.remove('hidden');
+        }
         
         if (servicesList) {
             servicesList.innerHTML = '';

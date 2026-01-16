@@ -13,11 +13,13 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 // Get pagination and search parameters
 $currentPage = isset($_GET['page']) ? $_GET['page'] : 1;
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
+$fromDate = isset($_GET['from']) ? trim($_GET['from']) : null;
+$toDate = isset($_GET['to']) ? trim($_GET['to']) : null;
 $perPage = 10; // Records per page
 
 // Get data from controller
 $attendanceController = new AttendanceController();
-$data = $attendanceController->getPaginatedAttendances($currentPage, $perPage, $searchQuery);
+$data = $attendanceController->getPaginatedAttendances($currentPage, $perPage, $searchQuery, $fromDate, $toDate);
 
 // Extract data for view
 $attendances = $data['attendances'];
@@ -156,7 +158,7 @@ $searchQuery = $data['searchQuery'];
     <div class="flex min-h-screen">
 
         
-        <?=Sidebar("Attendance Logs", null)?>
+        <?=Sidebar("Attendance", null)?>
 
         <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
@@ -168,11 +170,19 @@ $searchQuery = $data['searchQuery'];
                         <h1 class="text-2xl font-semibold text-gray-800">Employee Attendance</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?></p>
                     </div>
-                    <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+                    <div class="flex items-center gap-4">
+                        <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+                        <a href="attendance-standalone.php" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                            <span>Open in another tab</span>
+                        </a>
+                    </div>
                 </div>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],
-                    ['label' => 'Attendance Logs', 'link' => 'attendance.php']
+                    ['label' => 'Attendance', 'link' => 'attendance.php']
                 ]); ?>
 
                 <!-- Top Action Buttons (Attendance Now & Export) -->
@@ -183,7 +193,7 @@ $searchQuery = $data['searchQuery'];
                     </button>
                     <button class="flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors shadow-md text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        Export Attendance Logs
+                        Export Attendance
                     </button>
                 </div>
             </header>
@@ -245,34 +255,44 @@ $searchQuery = $data['searchQuery'];
                     </div>
 
                     <!-- Filter Card -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <div id="filterCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
                         <h2 class="font-semibold text-gray-800 mb-4">Filter</h2>
                         
-                        <div class="space-y-4">
-                            <!-- From Date -->
-                            <div>
-                                <label for="filter-from" class="block text-sm font-medium text-gray-500 mb-1">From</label>
-                                <div class="relative">
-                                    <input type="text" id="filter-from" placeholder="mm/dd/yyyy"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition pr-10">
-                                    <svg class="w-4 h-4 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <form method="GET" action="" id="filterForm">
+                            <div class="space-y-4">
+                                <!-- From Date -->
+                                <div>
+                                    <label for="filter-from" class="block text-sm font-medium text-gray-500 mb-1">From</label>
+                                    <div class="relative">
+                                        <input type="date" id="filter-from" name="from" value="<?= htmlspecialchars($fromDate ?? '') ?>"
+                                            class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
+                                    </div>
+                                </div>
+
+                                <!-- To Date -->
+                                <div>
+                                    <label for="filter-to" class="block text-sm font-medium text-gray-500 mb-1">To</label>
+                                    <div class="relative">
+                                        <input type="date" id="filter-to" name="to" value="<?= htmlspecialchars($toDate ?? '') ?>"
+                                            class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
+                                    </div>
+                                </div>
+
+                                <!-- Preserve search parameter -->
+                                <?php if (!empty($searchQuery)): ?>
+                                    <input type="hidden" name="search" value="<?= htmlspecialchars($searchQuery) ?>">
+                                <?php endif; ?>
+
+                                <div class="flex gap-2">
+                                    <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm text-sm">
+                                        Apply Filter
+                                    </button>
+                                    <a href="?<?= !empty($searchQuery) ? 'search=' . urlencode($searchQuery) : '' ?>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors shadow-sm text-sm flex items-center justify-center">
+                                        Clear
+                                    </a>
                                 </div>
                             </div>
-
-                            <!-- To Date -->
-                            <div>
-                                <label for="filter-to" class="block text-sm font-medium text-gray-500 mb-1">To</label>
-                                <div class="relative">
-                                    <input type="text" id="filter-to" placeholder="mm/dd/yyyy"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition pr-10">
-                                    <svg class="w-4 h-4 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                            </div>
-
-                            <button class="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors shadow-sm text-sm">
-                                Apply Filter
-                            </button>
-                        </div>
+                        </form>
                     </div>
 
                 </div>
@@ -294,22 +314,22 @@ $searchQuery = $data['searchQuery'];
                         <div class="flex-grow grid grid-cols-2 gap-x-6 gap-y-2 border-t md:border-t-0 pt-4 md:pt-0">
                             
                             <div class="col-span-2">
-                                <h3 class="text-xl font-bold text-gray-900" id="name">Gorge, Urey G.</h3>
+                                <h3 class="text-xl font-bold text-gray-900" id="name">-</h3>
                                 <p class="text-sm text-gray-500">Employee</p>
                             </div>
 
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Role</p>
-                                <p class="font-medium text-gray-700" id="role">asd</p>
+                                <p class="font-medium text-gray-700" id="role">-</p>
                             </div>
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Employee ID</p>
-                                <p class="font-medium text-gray-700" id="employee_id"></p>
+                                <p class="font-medium text-gray-700" id="employee_id">-</p>
                             </div>
 
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Time In</p>
-                                <p class="font-medium text-gray-700" id="time_in">8:05 AM</p>
+                                <p class="font-medium text-gray-700" id="time_in">-</p>
                             </div>
                             <div class="col-span-1">
                                 <p class="text-xs text-gray-500 uppercase">Time Out</p>
@@ -320,7 +340,7 @@ $searchQuery = $data['searchQuery'];
                             <div class="col-span-2 mt-2">
                                 <span class="inline-flex items-center text-green-600 font-semibold text-sm">
                                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <span id="window"></span>
+                                    <span id="window">-</span>
                                 </span>
                             </div>
                         </div>
@@ -331,33 +351,46 @@ $searchQuery = $data['searchQuery'];
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Attendances Records</h2>
                         
                         <!-- Search & Search Button (Updated layout) -->
-                        <form method="GET" action="" class="mb-4">
-                            <div class="relative w-full sm:w-1/2 lg:w-1/3">
-                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mb-4">
+                            <form method="GET" action="" class="relative flex-1 sm:w-96 lg:w-[500px] flex items-center gap-2" id="searchForm">
+                                <div class="relative flex-1">
+                                    <input type="text" 
+                                        name="search" 
+                                        id="search-employee-record"
+                                        placeholder="Search employee name, ID, or status..." 
+                                        value="<?= htmlspecialchars($searchQuery) ?>"
+                                        class="w-full py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <?php if (!empty($searchQuery)): ?>
+                                    <a href="?" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </a>
+                                    <?php endif; ?>
                                 </div>
-                                <input type="text" 
-                                    id="search-employee-record" 
-                                    name="search" 
-                                    placeholder="Search employee name, ID, or status..."
-                                    value="<?= htmlspecialchars($searchQuery) ?>"
-                                    class="w-full py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                                <?php if (!empty($searchQuery)): ?>
-                                <button type="button" onclick="window.location.href='?'" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                    Search
                                 </button>
+                                <!-- Preserve date filter parameters -->
+                                <?php if (!empty($fromDate)): ?>
+                                    <input type="hidden" name="from" value="<?= htmlspecialchars($fromDate) ?>">
                                 <?php endif; ?>
-                            </div>
-                        </form>
+                                <?php if (!empty($toDate)): ?>
+                                    <input type="hidden" name="to" value="<?= htmlspecialchars($toDate) ?>">
+                                <?php endif; ?>
+                            </form>
+                            <!-- Filter Button -->
+                            <button type="button" id="filterButton" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                                </svg>
+                                Filters
+                            </button>
+                        </div>
                         
                         <!-- Table Wrapper for Horizontal Scroll on small screens -->
                         <div class="table-container rounded-lg border border-gray-200">
-                            <div class="inline-block min-w-full align-middle">
-                                <table class="min-w-full divide-y divide-gray-200" style="min-width: 800px;">
+                            <div class="block w-full align-middle">
+                                <table class="w-full divide-y divide-gray-200">
                                 <thead class="table-header">
                                     <tr>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
@@ -375,12 +408,24 @@ $searchQuery = $data['searchQuery'];
                                     </tr>
                                     <?php else: ?>
                                     <?php foreach($attendances as $attendance):?>
+                                    <?php
+                                    // Format the date/time to "Jan 13, 2026 08:57:57 AM" format
+                                    $formattedDateTime = '';
+                                    if (!empty($attendance->attendance_time)) {
+                                        try {
+                                            $dateTime = new DateTime($attendance->attendance_time);
+                                            $formattedDateTime = $dateTime->format('M j, Y h:i:s A');
+                                        } catch (Exception $e) {
+                                            $formattedDateTime = $attendance->attendance_time;
+                                        }
+                                    }
+                                    ?>
                                     <tr class="hover:bg-gray-50 transition duration-150">
                                         <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900"><?= htmlspecialchars($attendance->employee_id ?? '') ?></td>
                                         <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700"><?= htmlspecialchars($attendance->full_name ?? '') ?></td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500"><?= htmlspecialchars($attendance->attendance_time ?? '') ?></td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500"><?= htmlspecialchars($formattedDateTime) ?></td>
                                         <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?= htmlspecialchars($attendance->window ?? '') ?></span>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?= htmlspecialchars($attendance->window_label ?? $attendance->window ?? '') ?></span>
                                         </td>
                                     </tr>
                                     <?php endforeach ?>
@@ -395,7 +440,7 @@ $searchQuery = $data['searchQuery'];
                         <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
                             <div>
                                 Showing <span class="font-medium"><?= $pagination['startRecord'] ?></span> to <span class="font-medium"><?= $pagination['endRecord'] ?></span> of <span class="font-medium"><?= $pagination['totalRecords'] ?></span> records
-                                <?php if (!empty($searchQuery)): ?>
+                                <?php if (!empty($searchQuery) || !empty($fromDate) || !empty($toDate)): ?>
                                     <span class="text-gray-500">(filtered)</span>
                                 <?php endif; ?>
                             </div>
@@ -405,7 +450,17 @@ $searchQuery = $data['searchQuery'];
                                 <!-- Previous Button -->
                                 <?php 
                                 // Build query string for pagination links
-                                $queryString = !empty($searchQuery) ? '&search=' . urlencode($searchQuery) : '';
+                                $queryParams = [];
+                                if (!empty($searchQuery)) {
+                                    $queryParams[] = 'search=' . urlencode($searchQuery);
+                                }
+                                if (!empty($fromDate)) {
+                                    $queryParams[] = 'from=' . urlencode($fromDate);
+                                }
+                                if (!empty($toDate)) {
+                                    $queryParams[] = 'to=' . urlencode($toDate);
+                                }
+                                $queryString = !empty($queryParams) ? '&' . implode('&', $queryParams) : '';
                                 ?>
                                 <?php if ($pagination['currentPage'] > 1): ?>
                                     <a href="?page=<?= $pagination['currentPage'] - 1 ?><?= $queryString ?>" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
@@ -485,6 +540,20 @@ $searchQuery = $data['searchQuery'];
             data-websocket-url="<?php echo htmlspecialchars(WEBSOCKET_URL); ?>"
             data-attendance-api-url="<?php echo htmlspecialchars(API_ENDPOINT_ATTENDANCES); ?>"
             src="./js/attendance/main.js"></script>
+
+    <!-- Filter Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterButton = document.getElementById('filterButton');
+            const filterCard = document.getElementById('filterCard');
+            
+            if (filterButton && filterCard) {
+                filterButton.addEventListener('click', function() {
+                    filterCard.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
 
 </body>
 </html>

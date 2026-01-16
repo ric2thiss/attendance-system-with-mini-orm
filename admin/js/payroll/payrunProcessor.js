@@ -1,49 +1,61 @@
 /**
  * Payrun Processor Module
- * Handles payrun calculation logic
+ * Handles payrun processing via API
  */
 import { PayrollUtils } from './utils.js';
 
 export class PayrunProcessor {
-    constructor(initialNetTotal = 725400, initialGrossTotal = 850500, initialDeductionsTotal = 125100, initialEmployeeCount = 15) {
-        this.lastNetTotal = initialNetTotal;
-        this.lastGrossTotal = initialGrossTotal;
-        this.lastDeductionsTotal = initialDeductionsTotal;
-        this.employeeCount = initialEmployeeCount;
-    }
-
     /**
-     * Process a new payrun
+     * Process a new payrun via API
+     * @param {string} periodStart - Start date (YYYY-MM-DD)
+     * @param {string} periodEnd - End date (YYYY-MM-DD)
      */
-    processPayrun() {
-        const payrunDate = PayrollUtils.getFormattedDate();
+    async processPayrun(periodStart = null, periodEnd = null) {
+        // Default to current month if not provided
+        if (!periodStart) {
+            const now = new Date();
+            periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        }
+        if (!periodEnd) {
+            periodEnd = new Date().toISOString().split('T')[0];
+        }
+
+        // Import base URL utility
+        const { getBaseUrl } = await import('../shared/baseUrl.js');
+        const baseUrl = getBaseUrl();
         
-        // Increment the employee count slightly for variation
-        this.employeeCount = Math.min(this.employeeCount + Math.floor(Math.random() * 2), 20);
+        try {
+            const response = await fetch(`${baseUrl}/api/payroll/process.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    period_start: periodStart,
+                    period_end: periodEnd
+                })
+            });
 
-        // Simulate slight growth in totals (Net Pay between +1% and +5%)
-        const netIncreaseFactor = 1 + (Math.random() * 0.04 + 0.01); // 1.01 to 1.05
-        const newNetTotal = Math.round(this.lastNetTotal * netIncreaseFactor / 100) * 100; // Round to nearest 100
-        
-        // Gross and Deductions are derived from new Net Total to maintain consistency
-        const newGrossTotal = Math.round(newNetTotal * 1.18 / 100) * 100; // Gross is approx Net * 1.18
-        const newDeductionsTotal = newGrossTotal - newNetTotal;
+            const result = await response.json();
 
-        const newPayrunData = {
-            payrunDate: payrunDate,
-            periodCovered: `New Period - ${payrunDate}`,
-            employeesPaid: this.employeeCount,
-            netTotal: newNetTotal,
-            grossTotal: newGrossTotal,
-            deductionsTotal: newDeductionsTotal,
-            status: 'Completed',
-        };
-
-        // Update the "last" totals for the next run
-        this.lastNetTotal = newNetTotal;
-        this.lastGrossTotal = newGrossTotal;
-        this.lastDeductionsTotal = newDeductionsTotal;
-
-        return newPayrunData;
+            if (result.success && result.data) {
+                const data = result.data;
+                return {
+                    payrunId: data.payrun_id,
+                    payrunDate: PayrollUtils.formatDate(data.payrun_date),
+                    periodCovered: PayrollUtils.formatDate(data.period_start) + ' - ' + PayrollUtils.formatDate(data.period_end),
+                    employeesPaid: data.employees_count,
+                    netTotal: data.total_net_pay,
+                    grossTotal: data.total_gross_pay,
+                    deductionsTotal: data.total_deductions,
+                    status: 'Completed'
+                };
+            } else {
+                throw new Error(result.message || 'Failed to process payrun');
+            }
+        } catch (error) {
+            console.error('Error processing payrun:', error);
+            throw error;
+        }
     }
 }

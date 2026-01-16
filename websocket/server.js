@@ -56,12 +56,30 @@ wss.on('connection', (ws) => {
 
       // Handle attendance update from C# (contains full attendance data)
       if (message.type === 'attendance_update') {
-        // Broadcast the full attendance data to all web clients (excluding the sender which is C#)
-        // The message.data contains the full attendance structure with lastAttendee, employee, resident
-        for (const client of wss.clients) {
-          if (client.readyState === WebSocket.OPEN && client !== ws) {
-            // Forward the full attendance data structure
-            client.send(JSON.stringify(message));
+        // Fetch fresh data from API to include correspondingAttendance
+        // This ensures web clients get the complete data including the corresponding in/out pair
+        try {
+          const res = await fetch(ATTENDANCES_ENDPOINT);
+          const freshData = await res.json();
+          
+          // Broadcast the fresh attendance data to all web clients (excluding the sender which is C#)
+          // This includes correspondingAttendance which is needed for displaying both TIME IN and TIME OUT
+          for (const client of wss.clients) {
+            if (client.readyState === WebSocket.OPEN && client !== ws) {
+              // Send the fresh data with correspondingAttendance included
+              client.send(JSON.stringify({
+                type: 'attendance_update',
+                data: freshData
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('❌ Error fetching fresh attendance data:', err);
+          // Fallback: forward the original message if API fetch fails
+          for (const client of wss.clients) {
+            if (client.readyState === WebSocket.OPEN && client !== ws) {
+              client.send(JSON.stringify(message));
+            }
           }
         }
       }

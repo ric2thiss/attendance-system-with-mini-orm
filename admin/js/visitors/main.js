@@ -11,6 +11,7 @@ import { StatusUpdater } from './statusUpdater.js';
 import { BookingModal } from './bookingModal.js';
 import { NonResidentForm } from './nonResidentForm.js';
 import { initSidebar } from '../shared/sidebar.js';
+import { initSharedClock } from '../shared/clock.js';
 
 // Known faces - will be loaded from API
 let labeledDescriptors = [];
@@ -151,6 +152,46 @@ async function logResidentWithoutBooking(residentData, service) {
 }
 
 /**
+ * Try again - reset recognition state and allow re-capture
+ */
+function tryAgain() {
+    // Reset recognition state
+    if (recognitionLogic) {
+        recognitionLogic.resetLoggedState();
+    }
+    
+    // Hide any open modals
+    if (bookingModal) {
+        bookingModal.hide();
+    }
+    if (nonResidentForm) {
+        nonResidentForm.hide();
+    }
+    
+    // Reset status to ready
+    if (statusUpdater) {
+        statusUpdater.resetToReady();
+    }
+    
+    // Clear timeout if exists
+    if (faceRecognitionTimeout) {
+        clearTimeout(faceRecognitionTimeout);
+        faceRecognitionTimeout = null;
+    }
+    
+    // Restart timeout for non-resident form (if no face detected after 5 seconds)
+    if (recognitionLogic) {
+        faceRecognitionTimeout = setTimeout(() => {
+            if (!recognitionLogic.isLoggedToday('timeout-check')) {
+                // No face recognized - show non-resident form
+                console.log('No face recognized after 5 seconds. Showing non-resident form.');
+                nonResidentForm.show();
+            }
+        }, FACE_RECOGNITION_TIMEOUT);
+    }
+}
+
+/**
  * Initialize face recognition system
  */
 async function initializeFaceRecognition() {
@@ -189,9 +230,8 @@ async function initializeFaceRecognition() {
         // Load known faces
         await faceRecognition.initializeFaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
 
-        // Initialize webcam
+        // Initialize webcam (but don't start it yet - wait for user to click Start button)
         webcamHandler = new WebcamHandler('webcam-video');
-        await webcamHandler.start();
 
         // Initialize recognition logic with updated callback
         recognitionLogic = new RecognitionLogic(
@@ -224,20 +264,8 @@ async function initializeFaceRecognition() {
             
             handleRecognizedFace(id, name, residentData);
         });
-        
-        recognitionLogic.start();
 
-        // Set timeout for non-resident form (Scenario 3)
-        // If no face is recognized after 5 seconds, show non-resident form
-        faceRecognitionTimeout = setTimeout(() => {
-            if (!recognitionLogic.isLoggedToday('timeout-check')) {
-                // No face recognized - show non-resident form
-                console.log('No face recognized after 5 seconds. Showing non-resident form.');
-                nonResidentForm.show();
-            }
-        }, FACE_RECOGNITION_TIMEOUT);
-
-        // Update status to ready
+        // Update status to ready (camera will be started manually via button)
         statusUpdater.updateReady();
     } catch (error) {
         console.error("Error initializing face recognition:", error);
@@ -257,6 +285,134 @@ async function initializeFaceRecognition() {
 }
 
 /**
+ * Start camera and begin recognition
+ */
+async function startCamera() {
+    const startBtn = document.getElementById('start-camera-btn');
+    const stopBtn = document.getElementById('stop-camera-btn');
+    
+    if (!webcamHandler) {
+        console.error('Webcam handler not initialized');
+        return;
+    }
+
+    try {
+        // Disable start button while starting
+        if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.textContent = 'Starting...';
+        }
+
+        // Start webcam
+        await webcamHandler.start();
+
+        // Initialize recognition logic if not already started
+        if (recognitionLogic && !recognitionLogic.isRunning()) {
+            recognitionLogic.start();
+        }
+
+        // Set timeout for non-resident form (Scenario 3)
+        // If no face is recognized after 5 seconds, show non-resident form
+        faceRecognitionTimeout = setTimeout(() => {
+            if (recognitionLogic && !recognitionLogic.isLoggedToday('timeout-check')) {
+                // No face recognized - show non-resident form
+                console.log('No face recognized after 5 seconds. Showing non-resident form.');
+                nonResidentForm.show();
+            }
+        }, FACE_RECOGNITION_TIMEOUT);
+
+        // Update button visibility
+        if (startBtn) {
+            startBtn.classList.add('hidden');
+        }
+        if (stopBtn) {
+            stopBtn.classList.remove('hidden');
+        }
+
+        // Update status
+        if (statusUpdater) {
+            statusUpdater.updateReady();
+        }
+    } catch (error) {
+        console.error("Error starting camera:", error);
+        
+        // Re-enable start button on error
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Start Camera
+            `;
+        }
+
+        // Update status with error
+        if (statusUpdater) {
+            let errorTitle = 'CAMERA ERROR';
+            let errorMessage = 'Camera access denied. Please check permissions and try again.';
+            
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage = 'Camera permission denied. Please allow camera access and click Start again.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage = 'No camera found. Please connect a camera and try again.';
+            }
+            
+            statusUpdater.updateError(errorTitle, errorMessage);
+        }
+    }
+}
+
+/**
+ * Stop camera and pause recognition
+ */
+function stopCamera() {
+    const startBtn = document.getElementById('start-camera-btn');
+    const stopBtn = document.getElementById('stop-camera-btn');
+
+    if (!webcamHandler) {
+        console.error('Webcam handler not initialized');
+        return;
+    }
+
+    // Stop webcam
+    webcamHandler.stop();
+
+    // Stop recognition logic
+    if (recognitionLogic && recognitionLogic.isRunning()) {
+        recognitionLogic.stop();
+    }
+
+    // Clear timeout if exists
+    if (faceRecognitionTimeout) {
+        clearTimeout(faceRecognitionTimeout);
+        faceRecognitionTimeout = null;
+    }
+
+    // Update button visibility
+    if (startBtn) {
+        startBtn.classList.remove('hidden');
+        startBtn.disabled = false;
+        startBtn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Start Camera
+        `;
+    }
+    if (stopBtn) {
+        stopBtn.classList.add('hidden');
+    }
+
+    // Update status
+    if (statusUpdater) {
+        statusUpdater.updateReady();
+    }
+}
+
+/**
  * Initialize all modules
  */
 function init() {
@@ -270,16 +426,31 @@ function init() {
     // Initialize visitor API
     visitorAPI = new VisitorAPI();
 
-    // Initialize booking modal
-    bookingModal = new BookingModal();
+    // Initialize booking modal with tryAgain callback
+    bookingModal = new BookingModal(tryAgain);
 
-    // Initialize non-resident form
-    nonResidentForm = new NonResidentForm(visitorAPI);
+    // Initialize non-resident form with tryAgain callback
+    nonResidentForm = new NonResidentForm(visitorAPI, tryAgain);
 
     // Initialize sidebar toggle
     initSidebar();
+    
+    // Initialize shared clock for consistent date display
+    initSharedClock();
 
-    // Start face recognition system
+    // Set up camera control buttons
+    const startBtn = document.getElementById('start-camera-btn');
+    const stopBtn = document.getElementById('stop-camera-btn');
+
+    if (startBtn) {
+        startBtn.addEventListener('click', startCamera);
+    }
+
+    if (stopBtn) {
+        stopBtn.addEventListener('click', stopCamera);
+    }
+
+    // Start face recognition system (but don't start camera automatically)
     initializeFaceRecognition();
 }
 

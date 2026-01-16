@@ -66,6 +66,9 @@ export class WebcamHandler {
         
         if (this.videoPlaceholder) {
             this.videoPlaceholder.classList.remove('hidden');
+            if (this.cameraStatus) {
+                this.cameraStatus.textContent = "Status: Camera stopped.";
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import { ViewHandler } from "./viewHandler.js";
 import { FilterHandler } from "./filterHandler.js";
 import { ShowResidentModalHandler } from "./modalHandler.js";
 import { initSidebar } from '../shared/sidebar.js';
+import { initSharedClock } from '../shared/clock.js';
 
 // Debug: Check if script is loaded
 console.log("Residents.js script loaded!");
@@ -64,6 +65,9 @@ function init() {
     
     // Initialize sidebar toggle
     initSidebar();
+    
+    // Initialize shared clock for consistent date display
+    initSharedClock();
 }
 
 // Wait for DOM to be fully loaded

@@ -11,6 +11,11 @@ namespace UareUSampleCSharp
 {
     public partial class Enrollment : Form
     {
+        // ⚠️ CONFIGURATION: Base URL of the attendance system
+        // Change this if your folder name or domain is different
+        // Example: "http://localhost/attendance" or "http://localhost/attendance-system"
+        private const string BASE_URL = "http://localhost/attendance-system";
+
         public Form_Main _sender;
 
         List<Fmd> preenrollmentFmds;
@@ -175,7 +180,7 @@ namespace UareUSampleCSharp
                     employee_id = _employeeId,
                     template = templateBase64
                 };
-                successUrl = "http://localhost/attendance-system/biometric-success.php?employee_id=" + _employeeId;
+                successUrl = BASE_URL + "/biometric-success.php?employee_id=" + _employeeId;
             }
             else
             {
@@ -184,7 +189,7 @@ namespace UareUSampleCSharp
                     resident_id = _residentId,
                     template = templateBase64
                 };
-                successUrl = "http://localhost/attendance-system/biometric-success.php?resident_id=" + _residentId;
+                successUrl = BASE_URL + "/biometric-success.php?resident_id=" + _residentId;
             }
 
             var json = JsonConvert.SerializeObject(data);
@@ -197,7 +202,7 @@ namespace UareUSampleCSharp
                     //PHP endpoint = http://localhost/attendance-system/enroll.php
                     //Laravel Endpoint = http://127.0.0.1:8000/api/fingerprint/enroll
 
-                    var response = await client.PostAsync("http://localhost/attendance-system/enroll.php", content);
+                    var response = await client.PostAsync(BASE_URL + "/enroll.php", content);
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -300,7 +305,7 @@ namespace UareUSampleCSharp
                     // NEW ENDPOINT: http://localhost/attendance-system/api/templates/index.php
                     // Laravel endpoint = http://127.0.0.1:8000/api/templates
 
-                    var response = await client.GetAsync("http://localhost/attendance-system/api/templates/index.php");
+                    var response = await client.GetAsync(BASE_URL + "/api/templates/index.php");
                     response.EnsureSuccessStatusCode();
 
                     var responseBody = await response.Content.ReadAsStringAsync();

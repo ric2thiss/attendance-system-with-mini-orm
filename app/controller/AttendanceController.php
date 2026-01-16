@@ -4,6 +4,7 @@ class AttendanceController {
     protected $attendanceRepository;
     protected $employeeRepository;
     protected $residentRepository;
+    protected $windowRepository;
 
     public function __construct()
     {
@@ -11,6 +12,7 @@ class AttendanceController {
         $this->attendanceRepository = new AttendanceRepository($db);
         $this->employeeRepository = new EmployeeRepository($db);
         $this->residentRepository = new ResidentRepository($db);
+        $this->windowRepository = new AttendanceWindowRepository($db);
     }
     // public function index()
     // {
@@ -45,6 +47,7 @@ class AttendanceController {
 
         $employee = null;
         $resident = null;
+        $correspondingAttendance = null;
 
         if ($lastAttendance) {
             $employeeId = is_object($lastAttendance) ? $lastAttendance->employee_id : $lastAttendance['employee_id'];
@@ -54,6 +57,20 @@ class AttendanceController {
                 $residentId = is_object($employee) ? $employee->resident_id : $employee['resident_id'];
                 $resident = $this->residentRepository->findById($residentId);
             }
+            
+            // Get the corresponding attendance (in/out pair) for the same date
+            $window = is_object($lastAttendance) ? $lastAttendance->window : $lastAttendance['window'];
+            $timestamp = is_object($lastAttendance) ? ($lastAttendance->timestamp ?? $lastAttendance->created_at) : ($lastAttendance['timestamp'] ?? $lastAttendance['created_at']);
+            
+            // Extract date from timestamp - handle both timestamp and datetime formats
+            if ($timestamp) {
+                // Try to extract date from timestamp
+                $dateObj = new DateTime($timestamp);
+                $date = $dateObj->format('Y-m-d');
+                
+                // Get corresponding attendance
+                $correspondingAttendance = $this->attendanceRepository->getCorrespondingAttendance($employeeId, $window, $date);
+            }
         }
 
         return [
@@ -62,6 +79,7 @@ class AttendanceController {
             "lastAttendee" => $lastAttendance,
             "lastAttendeeEmployee" => $employee,
             "lastAttendeeResident" => $resident,
+            "correspondingAttendance" => $correspondingAttendance,
             // "windows" => $this->windows(),
         ];
     }
@@ -108,10 +126,14 @@ class AttendanceController {
         $data["created_at"] = $this->now();
         $data["updated_at"] = $this->now();
 
+        // Normalize window label to lowercase for consistency
+        $data["window"] = strtolower(trim($data["window"]));
+
         // Get valid windows
         $windows = $this->getWindows();
-        $labels  = array_column($windows, 'label');
+        $labels  = array_map('strtolower', array_column($windows, 'label'));
 
+        // Validate window (case-insensitive comparison)
         if (!isset($data["window"]) || !in_array($data["window"], $labels)) {
             http_response_code(400);
             echo json_encode([
@@ -121,7 +143,18 @@ class AttendanceController {
             return;
         }
 
-        // Check if already logged today
+        // Validate that employee_id exists in employees table
+        $employee = $this->employeeRepository->findById($data["employee_id"]);
+        if (!$employee) {
+            http_response_code(404);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Employee not found. Only employees can log attendance."
+            ]);
+            return;
+        }
+
+        // Check if already logged today (window is already normalized to lowercase)
         if ($this->attendanceRepository->existsTodayForWindow($data["employee_id"], $data["window"])) {
             http_response_code(409); // Conflict
             echo json_encode([
@@ -131,7 +164,7 @@ class AttendanceController {
             return;
         }
 
-        // 5. Save attendance
+        // 5. Save attendance (window is already normalized to lowercase)
         try {
             $saved = $this->attendanceRepository->create($data);
 
@@ -160,28 +193,34 @@ class AttendanceController {
 
      private function getWindows()
     {
-        return [
-            [
-                'label' => 'morning_in',
-                'start' => '06:00:00',
-                'end' => '11:59:00',
-            ],
-            [
-                'label' => 'morning_out',
-                'start' => '12:00:00',
-                'end' => '12:59:00',
-            ],
-            [
-                'label' => 'afternoon_in',
-                'start' => '13:00:00',
-                'end' => '15:59:00',
-            ],
-            [
-                'label' => 'afternoon_out',
-                'start' => '16:00:00',
-                'end' => '18:30:00',
-            ],
-        ];
+        // Fetch windows from database
+        try {
+            return $this->windowRepository->getWindowsArray();
+        } catch (Exception $e) {
+            // Fallback to default windows if database fetch fails
+            return [
+                [
+                    'label' => 'morning_in',
+                    'start' => '06:00:00',
+                    'end' => '11:59:00',
+                ],
+                [
+                    'label' => 'morning_out',
+                    'start' => '12:00:00',
+                    'end' => '12:59:00',
+                ],
+                [
+                    'label' => 'afternoon_in',
+                    'start' => '13:00:00',
+                    'end' => '15:59:00',
+                ],
+                [
+                    'label' => 'afternoon_out',
+                    'start' => '16:00:00',
+                    'end' => '18:30:00',
+                ],
+            ];
+        }
     }
 
     function now($format = "Y-m-d H:i:s", $timezone = "Asia/Manila")
@@ -196,16 +235,18 @@ class AttendanceController {
     }
 
     /**
-     * Get paginated attendance records with search
+     * Get paginated attendance records with search and date filtering
      *
      * @param int $page Current page number
      * @param int $perPage Records per page
      * @param string $searchQuery Search term (optional)
+     * @param string|null $fromDate Filter from date (optional)
+     * @param string|null $toDate Filter to date (optional)
      * @return array
      */
-    public function getPaginatedAttendances($page = 1, $perPage = 10, $searchQuery = '')
+    public function getPaginatedAttendances($page = 1, $perPage = 10, $searchQuery = '', $fromDate = null, $toDate = null)
     {
-        return $this->attendanceRepository->getPaginated($page, $perPage, $searchQuery);
+        return $this->attendanceRepository->getPaginated($page, $perPage, $searchQuery, $fromDate, $toDate);
     }
 
 

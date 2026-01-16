@@ -4,11 +4,66 @@
  * This file contains all configuration settings for the attendance system
  */
 
-// Base URL Configuration
-define("BASE_URL", "http://localhost/attendance-system");
 // BASE_PATH is already defined in config.php, so we don't redefine it here
 if (!defined("BASE_PATH")) {
     define("BASE_PATH", __DIR__ . "/../");
+}
+
+/**
+ * Dynamically detect base URL from current request
+ * Works regardless of folder name or domain
+ */
+if (!defined("BASE_URL")) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $basePath = '';
+    
+    // Method 1: Use SCRIPT_NAME to detect project root (most reliable)
+    // This works from any script location in the project
+    if (isset($_SERVER['SCRIPT_NAME']) && !empty($_SERVER['SCRIPT_NAME'])) {
+        $scriptPath = $_SERVER['SCRIPT_NAME'];
+        
+        // Remove leading slash and split into parts
+        $parts = explode('/', trim($scriptPath, '/'));
+        
+        // The first part is always the project folder name
+        // e.g., /attendance-system/auth/logout.php -> ['attendance-system', 'auth', 'logout.php']
+        // e.g., /attendance/admin/dashboard.php -> ['attendance', 'admin', 'dashboard.php']
+        if (!empty($parts[0])) {
+            $basePath = '/' . $parts[0];
+        }
+    }
+    
+    // Method 2: Fallback to REQUEST_URI if SCRIPT_NAME didn't work
+    if (empty($basePath) && isset($_SERVER['REQUEST_URI'])) {
+        $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        if ($requestUri) {
+            $parts = explode('/', trim($requestUri, '/'));
+            if (!empty($parts[0])) {
+                $basePath = '/' . $parts[0];
+            }
+        }
+    }
+    
+    // Method 3: Fallback to document root calculation
+    if (empty($basePath)) {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $configFile = __FILE__;
+        
+        // Calculate relative path from document root to project root
+        // config.php is in config/ directory, so project root is one level up
+        if ($docRoot && strpos($configFile, $docRoot) === 0) {
+            // Get the directory containing config.php (which is config/), then go up one level for project root
+            $projectRoot = dirname(dirname($configFile));
+            // Calculate relative path from document root
+            $relativePath = str_replace('\\', '/', substr($projectRoot, strlen($docRoot)));
+            $basePath = rtrim($relativePath, '/');
+        }
+    }
+    
+    // Build base URL (basePath is already prefixed with / if not empty)
+    $baseUrl = $protocol . '://' . $host . $basePath;
+    define("BASE_URL", $baseUrl);
 }
 
 // WebSocket Configuration

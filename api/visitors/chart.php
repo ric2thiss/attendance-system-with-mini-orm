@@ -55,7 +55,7 @@ if ($filter === 'today') {
         // Count visitors in this hour
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
-            FROM verification_log
+            FROM visitor_logs
             WHERE created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$hourStart, $hourEnd]);
@@ -75,7 +75,7 @@ if ($filter === 'today') {
         // Count visitors on this day
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
-            FROM verification_log
+            FROM visitor_logs
             WHERE DATE(created_at) = ?
         ");
         $stmt->execute([$dayStart]);
@@ -105,7 +105,7 @@ if ($filter === 'today') {
         // Count visitors in this week
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
-            FROM verification_log
+            FROM visitor_logs
             WHERE created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$weekStartStr, $weekEndStr]);
@@ -139,7 +139,7 @@ if ($filter === 'today') {
         // Count visitors in this month
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
-            FROM verification_log
+            FROM visitor_logs
             WHERE created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$monthStartStr, $monthEndStr]);

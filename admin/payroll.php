@@ -3,12 +3,55 @@ require_once __DIR__ . "/../bootstrap.php";
 require_once __DIR__ . "/../auth/helpers.php";
 requireAuth(); // Require authentication - redirects to login if not authenticated
 
-include_once '../shared/components/Sidebar.php';
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check password confirmation (with idle timeout of 4 minutes = 240 seconds)
+$idleTimeout = 240; // 4 minutes in seconds
+$passwordConfirmed = isset($_SESSION['payroll_password_confirmed']) && $_SESSION['payroll_password_confirmed'] === true;
+
+if (!$passwordConfirmed) {
+    // Password not confirmed - redirect to confirmation page
+    header("Location: payroll-confirm.php");
+    exit;
+}
+
+// Check if confirmation has expired due to idle time
+$lastActivity = $_SESSION['payroll_last_activity'] ?? $_SESSION['payroll_confirmed_at'] ?? 0;
+$timeSinceActivity = time() - $lastActivity;
+
+if ($timeSinceActivity > $idleTimeout) {
+    // Expired due to idle time - redirect to confirmation page
+    unset($_SESSION['payroll_password_confirmed']);
+    unset($_SESSION['payroll_confirmed_at']);
+    unset($_SESSION['payroll_last_activity']);
+    header("Location: payroll-confirm.php");
+    exit;
+}
+
+// Update last activity on page load
+$_SESSION['payroll_last_activity'] = time();
+
+include_once '../shared/components/PayrollSidebar.php';
 include_once '../shared/components/Breadcrumb.php';
 
 // Get current user for greeting
 $currentUser = currentUser();
 $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
+
+// Determine active nav item based on action parameter
+$action = $_GET['action'] ?? 'dashboard';
+$activeNavMap = [
+    'dashboard' => 'Payroll Dashboard',
+    'process' => 'Process Payroll',
+    'employees' => 'Employee Payroll Records',
+    'history' => 'Payroll History',
+    'reports' => 'Payroll Reports',
+    'settings' => 'Payroll Settings'
+];
+$activeNav = $activeNavMap[$action] ?? 'Payroll Dashboard';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,7 +109,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
     <!-- Main Container -->
     <div class="flex min-h-screen">
 
-        <?=Sidebar("Attendance Logs", null, "./Login_logo1.png")?>
+        <?=PayrollSidebar($activeNav, null, "./Login_logo1.png")?>
 
         <!-- Sidebar Toggle for Mobile -->
         <button id="sidebar-toggle" class="md:hidden fixed top-4 left-4 z-20 p-2 bg-blue-600 text-white rounded-full shadow-lg">
@@ -83,7 +126,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <h1 class="text-2xl font-semibold text-gray-800">Payroll Management</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage employee compensation, process payruns, and review history.</p>
                     </div>
-                    <div>
+                    <div class="flex items-center gap-4">
+                        <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
                         <button id="processPayrunButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
                             <svg class="w-5 h-5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Process New Payrun
@@ -105,8 +149,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <p class="text-sm font-medium text-gray-500">Total Gross Pay</p>
                         <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8a4 4 0 100 8m-9 1h18a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalGrossPay">₱ 850,500.00</p>
-                    <p class="text-xs text-green-500 mt-1" id="grossPayChange">+1.5% vs. previous month</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalGrossPay">₱ 0.00</p>
+                    <p class="text-xs text-gray-500 mt-1" id="grossPayChange">Loading...</p>
                 </div>
 
                 <!-- Card 2: Total Deductions (Last Month) -->
@@ -115,8 +159,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <p class="text-sm font-medium text-gray-500">Total Deductions</p>
                         <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalDeductions">₱ 125,100.00</p>
-                    <p class="text-xs text-red-500 mt-1" id="deductionsChange">-0.2% vs. previous month</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalDeductions">₱ 0.00</p>
+                    <p class="text-xs text-gray-500 mt-1" id="deductionsChange">Loading...</p>
                 </div>
 
                 <!-- Card 3: Total Net Pay (Last Month) -->
@@ -125,8 +169,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <p class="text-sm font-medium text-gray-500">Total Net Pay</p>
                         <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.108c-.36-.088-.748-.112-1.128-.068C18.667 8.01 17.13 9.493 15 12c-2.13 2.507-3.667 3.99-5.49 5.068-1.558.918-3.085 1.042-4.524.364-1.396-.64-2.583-2.025-3.064-3.568.088-.36.112-.748.068-1.128C5.333 13.99 6.87 12.507 9 10c2.13-2.507 3.667-3.99 5.49-5.068 1.558-.918 3.085-1.042 4.524-.364 1.396.64 2.583 2.025 3.064 3.568z"></path></svg>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalNetPay">₱ 725,400.00</p>
-                    <p class="text-xs text-gray-500 mt-1" id="employeesCount">For 15 active employees</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1" id="totalNetPay">₱ 0.00</p>
+                    <p class="text-xs text-gray-500 mt-1" id="employeesCount">Loading...</p>
                 </div>
             </div>
 
@@ -149,48 +193,14 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200" id="payrunsTableBody">
-                            
-                            <!-- Initial Row 1 -->
+                            <!-- Loading state - will be replaced by JavaScript -->
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Oct 15, 2024</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Oct 1 - Oct 15</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">15</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">₱ 360,200.00</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="#" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                                    <a href="#" class="text-gray-600 hover:text-gray-900">Export</a>
-                                </td>
-                            </tr>
-
-                            <!-- Initial Row 2 -->
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Sep 30, 2024</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Sep 16 - Sep 30</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">14</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">₱ 348,100.00</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="#" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                                    <a href="#" class="text-gray-600 hover:text-gray-900">Export</a>
-                                </td>
-                            </tr>
-                            
-                            <!-- Initial Row 3 - Pending (We will remove this when the first new run is processed) -->
-                            <tr id="pending-row">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Nov 15, 2024 (Upcoming)</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nov 1 - Nov 15</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">15</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">N/A</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="#" class="text-blue-600 hover:text-blue-900 mr-3">Prepare</a>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <svg class="animate-spin h-8 w-8 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p class="text-sm">Loading payrun history...</p>
                                 </td>
                             </tr>
                         </tbody>

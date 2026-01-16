@@ -34,6 +34,30 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             background-color: rgba(255, 255, 255, 0.1);
             border-left: 4px solid #007bff; /* Light blue border highlight */
         }
+        /* Sidebar scrollbar - hidden by default, shown on hover */
+        .sidebar-scrollable {
+            scrollbar-width: thin; /* Firefox - reserve space, hidden by default */
+            scrollbar-color: transparent transparent; /* Firefox - transparent thumb and track */
+            scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+            -ms-overflow-style: -ms-autohiding-scrollbar; /* IE and Edge */
+        }
+        .sidebar-scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar-scrollable::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scrollable::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 4px;
+        }
+        /* Show scrollbar on hover */
+        .sidebar-scrollable:hover {
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent; /* Firefox - show on hover */
+        }
+        .sidebar-scrollable:hover::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+        }
         /* Video container for visual cue */
         #video-feed-container {
             min-height: 400px;
@@ -92,6 +116,15 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <h1 class="text-2xl font-semibold text-gray-800">Visitors Logging</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Use face recognition to quickly logging.</p>
                     </div>
+                    <div class="flex items-center gap-4">
+                        <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+                        <a href="visitors-standalone.php" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                            <span>Open in another tab</span>
+                        </a>
+                    </div>
                 </div>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],
@@ -111,9 +144,27 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 
                         <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-4 bg-black bg-opacity-30 rounded-xl">
                             <svg class="w-20 h-20 text-blue-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.107 4h3.784a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <p class="text-white font-medium">Camera is loading...</p>
-                            <p class="text-sm text-gray-200 mt-1" id="camera-status">Status: Waiting for permission.</p>
+                            <p class="text-white font-medium">Click "Start Camera" to begin</p>
+                            <p class="text-sm text-gray-200 mt-1" id="camera-status">Status: Ready to start camera.</p>
                         </div>
+                    </div>
+                    
+                    <!-- Camera Control Buttons -->
+                    <div class="mt-4 flex justify-center gap-4">
+                        <button id="start-camera-btn" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Start Camera
+                        </button>
+                        <button id="stop-camera-btn" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"></path>
+                            </svg>
+                            Stop Camera
+                        </button>
                     </div>
                 </div>
 

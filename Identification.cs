@@ -18,6 +18,11 @@ namespace UareUSampleCSharp
 
     public partial class Identification : Form
     {
+        // ⚠️ CONFIGURATION: Base URL of the attendance system
+        // Change this if your folder name or domain is different
+        // Example: "http://localhost/attendance" or "http://localhost/attendance-system"
+        private const string BASE_URL = "http://localhost/attendance-system";
+
         public Form_Main _sender;
         private Fmd anyFinger;
         private int count;
@@ -65,7 +70,7 @@ namespace UareUSampleCSharp
                 {
                     // OLD ENDPOINT (backward compatible): http://localhost/attendance-system/api/services.php?resource=templates
                     // NEW ENDPOINT: http://localhost/attendance-system/api/templates/index.php
-                    var response = await client.GetAsync("http://localhost/attendance-system/api/templates/index.php");
+                    var response = await client.GetAsync(BASE_URL + "/api/templates/index.php");
                     var jArray = JArray.Parse(await response.Content.ReadAsStringAsync());
 
                     var storedTemplates = new List<StoredTemplate>();
@@ -97,7 +102,7 @@ namespace UareUSampleCSharp
                                 // Step 1: Determine active time window
                                 // OLD ENDPOINT (backward compatible): http://localhost/attendance-system/api/services.php?resource=attendance-windows
                                 // NEW ENDPOINT: http://localhost/attendance-system/api/attendance/windows.php
-                                var timeWindowResponse = await client.GetAsync("http://localhost/attendance-system/api/attendance/windows.php");
+                                var timeWindowResponse = await client.GetAsync(BASE_URL + "/api/attendance/windows.php");
                                 var windows = JArray.Parse(JObject.Parse(await timeWindowResponse.Content.ReadAsStringAsync())["windows"].ToString());
 
                                 DateTime now = DateTime.Now;
@@ -129,7 +134,7 @@ namespace UareUSampleCSharp
 
                                 // OLD ENDPOINT (backward compatible): http://localhost/attendance-system/api/services.php?resource=attendances
                                 // NEW ENDPOINT: http://localhost/attendance-system/api/attendance/index.php
-                                var logResponse = await client.PostAsync("http://localhost/attendance-system/api/attendance/index.php", attendanceContent);
+                                var logResponse = await client.PostAsync(BASE_URL + "/api/attendance/index.php", attendanceContent);
                                 string logResult = await logResponse.Content.ReadAsStringAsync();
 
                                 if (logResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -151,7 +156,7 @@ namespace UareUSampleCSharp
                                         // Fetch all attendance data to get the latest with employee/resident info
                                         // OLD ENDPOINT (backward compatible): http://localhost/attendance-system/api/services.php?resource=attendances
                                         // NEW ENDPOINT: http://localhost/attendance-system/api/attendance/index.php
-                                        var attendanceDataResponse = await client.GetAsync("http://localhost/attendance-system/api/attendance/index.php");
+                                        var attendanceDataResponse = await client.GetAsync(BASE_URL + "/api/attendance/index.php");
                                         
                                         if (attendanceDataResponse.IsSuccessStatusCode)
                                         {

@@ -23,24 +23,11 @@ try {
     
     // Get base URL for images
     // Photos are stored relative to project root (e.g., storage/img/residents/...)
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    
-    // Calculate base path: go up from api/visitors/residents.php to project root
-    // SCRIPT_NAME = /attendance-system/api/visitors/residents.php
-    // We need: /attendance-system
-    $scriptPath = $_SERVER['SCRIPT_NAME'];
-    
-    // More reliable method: find '/api' and take everything before it
-    $apiPos = strpos($scriptPath, '/api');
-    if ($apiPos !== false) {
-        $basePath = substr($scriptPath, 0, $apiPos);
-    } else {
-        // Fallback: go up 3 directory levels
-        $basePath = dirname(dirname(dirname($scriptPath)));
+    // Use BASE_URL from config if available, otherwise calculate it
+    if (!defined("BASE_URL")) {
+        require_once __DIR__ . "/../../config/app.config.php";
     }
-    
-    $baseUrl = $protocol . '://' . $host . $basePath;
+    $baseUrl = BASE_URL;
     
     // Format residents for face recognition
     $formattedResidents = [];

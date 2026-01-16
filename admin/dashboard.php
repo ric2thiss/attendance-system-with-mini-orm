@@ -26,12 +26,71 @@ try {
 
 $totalEmployees = $employeeRepository->getEmployeeCount();
 
-// Get visitor counts (default: all time, will be filtered via JavaScript/AJAX)
-$totalVisitors = $verificationLogRepository->count();
-$totalResidentVisitors = 0; // Will be calculated via AJAX based on filter
-$totalNonResidentVisitors = 0; // Will be calculated via AJAX based on filter
-$totalWalkin = 0; // Will be calculated via AJAX based on filter
-$totalOnlineAppointment = 0; // Will be calculated via AJAX based on filter
+// Get visitor counts (default: this month to match default filter, will be updated via JavaScript/AJAX)
+$now = new DateTime();
+$startDate = (clone $now)->modify('first day of this month')->setTime(0, 0, 0);
+$endDate = new DateTime();
+$startDateStr = $startDate->format('Y-m-d H:i:s');
+$endDateStr = $endDate->format('Y-m-d H:i:s');
+
+try {
+    // Count visitors for this month using visitor_logs table
+    $totalVisitors = VisitorLog::query()
+        ->whereBetween('created_at', [$startDateStr, $endDateStr])
+        ->count();
+    
+    // Get resident visitors count for this month (is_resident = 1)
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as count
+        FROM visitor_logs
+        WHERE created_at >= ? AND created_at <= ?
+        AND is_resident = 1
+    ");
+    $stmt->execute([$startDateStr, $endDateStr]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
+    
+    // Get non-resident visitors count for this month (is_resident = 0)
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as count
+        FROM visitor_logs
+        WHERE created_at >= ? AND created_at <= ?
+        AND is_resident = 0
+    ");
+    $stmt->execute([$startDateStr, $endDateStr]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalNonResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
+    
+    // Count online appointment visitors for this month (had_booking = 1)
+    $onlineStmt = $db->prepare("
+        SELECT COUNT(*) as count
+        FROM visitor_logs
+        WHERE created_at >= ? AND created_at <= ?
+        AND had_booking = 1
+    ");
+    $onlineStmt->execute([$startDateStr, $endDateStr]);
+    $onlineResult = $onlineStmt->fetch(PDO::FETCH_ASSOC);
+    $totalOnlineAppointment = $onlineResult ? (int)($onlineResult['count'] ?? 0) : 0;
+    
+    // Count walk-in visitors for this month (had_booking = 0)
+    $walkinStmt = $db->prepare("
+        SELECT COUNT(*) as count
+        FROM visitor_logs
+        WHERE created_at >= ? AND created_at <= ?
+        AND had_booking = 0
+    ");
+    $walkinStmt->execute([$startDateStr, $endDateStr]);
+    $walkinResult = $walkinStmt->fetch(PDO::FETCH_ASSOC);
+    $totalWalkin = $walkinResult ? (int)($walkinResult['count'] ?? 0) : 0;
+} catch (Exception $e) {
+    // Fallback values if query fails
+    $totalVisitors = 0;
+    $totalResidentVisitors = 0;
+    $totalNonResidentVisitors = 0;
+    $totalWalkin = 0;
+    $totalOnlineAppointment = 0;
+    error_log("Error fetching visitor counts: " . $e->getMessage());
+}
 
 // print_r($getdata["attendancesTodayCount"]);
 include_once '../shared/components/Sidebar.php';
@@ -195,13 +254,13 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                                 <!-- Total Walk-in Row -->
                                 <div class="flex items-center justify-between mb-2 pt-2 pb-2 border-b border-gray-200">
                                     <span class="text-sm font-medium text-gray-600">Total Walk-in</span>
-                                    <span class="text-lg font-bold text-pink-600" id="walkin-count">0</span>
+                                    <span class="text-lg font-bold text-pink-600" id="walkin-count"><?= $totalWalkin ?></span>
                                 </div>
                                 
                                 <!-- Total Online Appointment Row -->
                                 <div class="flex items-center justify-between pt-2 pb-2 border-b border-gray-200">
                                     <span class="text-sm font-medium text-gray-600">Total Online Appointment</span>
-                                    <span class="text-lg font-bold text-teal-600" id="online-appointment-count">0</span>
+                                    <span class="text-lg font-bold text-teal-600" id="online-appointment-count"><?= $totalOnlineAppointment ?></span>
                                 </div>
                             </div>
                         </div>

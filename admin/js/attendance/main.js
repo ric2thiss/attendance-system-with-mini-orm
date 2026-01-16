@@ -6,6 +6,7 @@ import { WebSocketManager } from './websocket.js';
 import { AttendanceHandler } from './attendanceHandler.js';
 import { ConnectionStatus } from './connectionStatus.js';
 import { Clock } from './clock.js';
+import { initSharedClock } from '../shared/clock.js';
 import { Weather } from './weather.js';
 import { initSidebar } from '../shared/sidebar.js';
 
@@ -62,7 +63,10 @@ function init() {
         websocketManager.init();
     }
 
-    // Initialize clock
+    // Initialize shared clock for consistent date display across all pages
+    initSharedClock();
+    
+    // Also initialize attendance-specific clock for additional features
     clock = new Clock();
     clock.start();
 

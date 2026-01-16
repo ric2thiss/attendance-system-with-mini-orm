@@ -10,18 +10,43 @@
 export async function updateVisitorCounts(filter) {
     try {
         // Using modular endpoint: ../api/visitors/stats.php?filter=${filter}
-        const response = await fetch(`../api/visitors/stats.php?filter=${filter}`);
+        const apiUrl = `../api/visitors/stats.php?filter=${filter}`;
+        console.log('Fetching visitor stats from:', apiUrl);
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            console.error('HTTP error fetching visitor stats:', response.status, response.statusText);
+            return;
+        }
+        
         const data = await response.json();
+        console.log('Visitor stats response:', data);
 
         if (data.success) {
             // Update detailed visitor counts (do not overwrite the residents count)
-            document.getElementById('total-visitors-count').textContent = data.total_visitors || 0;
-            document.getElementById('resident-visitors-count').textContent = data.resident_visitors || 0;
-            document.getElementById('non-resident-visitors-count').textContent = data.non_resident_visitors || 0;
-            document.getElementById('walkin-count').textContent = data.walkin || 0;
-            document.getElementById('online-appointment-count').textContent = data.online_appointment || 0;
+            const totalVisitorsEl = document.getElementById('total-visitors-count');
+            const residentVisitorsEl = document.getElementById('resident-visitors-count');
+            const nonResidentVisitorsEl = document.getElementById('non-resident-visitors-count');
+            const walkinEl = document.getElementById('walkin-count');
+            const onlineAppointmentEl = document.getElementById('online-appointment-count');
+            
+            if (totalVisitorsEl) {
+                totalVisitorsEl.textContent = data.total_visitors || 0;
+            }
+            if (residentVisitorsEl) {
+                residentVisitorsEl.textContent = data.resident_visitors || 0;
+            }
+            if (nonResidentVisitorsEl) {
+                nonResidentVisitorsEl.textContent = data.non_resident_visitors || 0;
+            }
+            if (walkinEl) {
+                walkinEl.textContent = data.walkin || 0;
+            }
+            if (onlineAppointmentEl) {
+                onlineAppointmentEl.textContent = data.online_appointment || 0;
+            }
         } else {
-            console.error('Error fetching visitor stats:', data.error);
+            console.error('Error fetching visitor stats:', data.error || 'Unknown error');
         }
     } catch (error) {
         console.error('Error updating visitor counts:', error);

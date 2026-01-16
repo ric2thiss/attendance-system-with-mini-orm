@@ -217,13 +217,18 @@ class EmployeeController {
     }
 
     /**
-     * Delete employee
+     * Delete employee (with archive)
+     * 
+     * Archives the employee to archive_employees table before deletion.
+     * Also deletes related employee_activity records due to foreign key constraints.
      * 
      * @param string $employeeId
      * @return array
      */
     public function delete(string $employeeId)
     {
+        $db = (new Database())->connect();
+        
         try {
             // Check if employee exists
             $employee = $this->employeeRepository->getEmployeeById($employeeId);
@@ -235,32 +240,68 @@ class EmployeeController {
                 ];
             }
 
-            // Delete employee (cascade should handle related records)
-            $deleted = Employee::query()
-                ->where('employee_id', $employeeId)
-                ->delete();
+            // Start transaction
+            $db->beginTransaction();
 
-            if ($deleted) {
-                return [
-                    "success" => true,
-                    "status"  => 200,
-                    "message" => "Employee successfully deleted."
-                ];
-            }
+            // 1. Archive employee data to archive_employees table
+            $archiveData = [
+                'employee_id' => $employee['employee_id'],
+                'resident_id' => $employee['resident_id'],
+                'position_id' => $employee['position_id'],
+                'department_id' => $employee['department_id'] ?? null,
+                'hired_date' => $employee['hired_date'],
+                'created_at' => $employee['created_at'] ?? date('Y-m-d H:i:s'),
+                'updated_at' => $employee['updated_at'] ?? date('Y-m-d H:i:s'),
+                'archived_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Insert into archive_employees
+            $archiveColumns = implode(', ', array_keys($archiveData));
+            $archivePlaceholders = ':' . implode(', :', array_keys($archiveData));
+            $archiveSql = "INSERT INTO archive_employees ({$archiveColumns}) VALUES ({$archivePlaceholders})";
+            $archiveStmt = $db->prepare($archiveSql);
+            $archiveStmt->execute($archiveData);
+
+            // 2. Delete related employee_activity records (required due to FK constraints)
+            $activityDeleteSql = "DELETE FROM employee_activity WHERE employee_id = :employee_id OR created_by = :employee_id";
+            $activityDeleteStmt = $db->prepare($activityDeleteSql);
+            $activityDeleteStmt->execute(['employee_id' => $employeeId]);
+
+            // 3. Delete fingerprint records from fingerprints table (employee-specific)
+            // Note: resident_fingerprints remain untouched as they belong to the resident
+            $fingerprintsDeleteSql = "DELETE FROM fingerprints WHERE employee_id = :employee_id";
+            $fingerprintsDeleteStmt = $db->prepare($fingerprintsDeleteSql);
+            $fingerprintsDeleteStmt->execute(['employee_id' => $employeeId]);
+
+            // 4. Delete from employees table
+            $deleteSql = "DELETE FROM employees WHERE employee_id = :employee_id";
+            $deleteStmt = $db->prepare($deleteSql);
+            $deleteStmt->execute(['employee_id' => $employeeId]);
+
+            // Commit transaction
+            $db->commit();
 
             return [
-                "success" => false,
-                "status"  => 500,
-                "error"   => "Failed to delete employee."
+                "success" => true,
+                "status"  => 200,
+                "message" => "Employee successfully archived and deleted."
             ];
 
         } catch (PDOException $err) {
+            // Rollback transaction on error
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             return [
                 "success" => false,
                 "status"  => 400,
-                "error"   => $this->getUserFriendlyErrorMessage($err)
+                "error"   => $this->getDeleteErrorMessage($err)
             ];
         } catch (Exception $err) {
+            // Rollback transaction on error
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             return [
                 "success" => false,
                 "status"  => 500,
@@ -270,7 +311,37 @@ class EmployeeController {
     }
 
     /**
-     * Convert database errors to user-friendly messages
+     * Convert database errors to user-friendly messages for DELETE operations
+     * 
+     * @param PDOException $exception
+     * @return string
+     */
+    private function getDeleteErrorMessage(PDOException $exception): string
+    {
+        $errorCode = $exception->getCode();
+        $errorMessage = $exception->getMessage();
+        
+        // Handle foreign key constraint violations (1451) - Cannot delete parent row
+        if (strpos($errorMessage, '1451') !== false || strpos($errorMessage, 'Cannot delete or update a parent row') !== false) {
+            return "Cannot delete employee because they have related records in the system. The employee may have activity records, attendance records, or other related data. Please contact the administrator to remove related records first.";
+        }
+        
+        // Handle foreign key constraint violations (1452) - Cannot add child row
+        if (strpos($errorMessage, '1452') !== false) {
+            return "Cannot delete employee due to a data integrity constraint. Please contact the administrator.";
+        }
+        
+        // Handle other constraint violations (23000)
+        if ($errorCode == 23000) {
+            return "Cannot delete employee due to a database constraint. Please contact the administrator.";
+        }
+        
+        // Generic database error
+        return "Failed to delete employee. Error: " . $errorMessage;
+    }
+
+    /**
+     * Convert database errors to user-friendly messages for INSERT/UPDATE operations
      * 
      * @param PDOException $exception
      * @return string

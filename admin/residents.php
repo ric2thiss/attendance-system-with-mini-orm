@@ -126,6 +126,9 @@ $searchQuery = $data['searchQuery'];
                         <h1 class="text-2xl font-semibold text-gray-800">Resident Directory</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage all current and past resident in one place.</p>
                     </div>
+                    <div class="flex items-center gap-4">
+                        <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
+                    </div>
                 </div>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],
@@ -185,8 +188,8 @@ $searchQuery = $data['searchQuery'];
 
                 <!-- Resident Table -->
                 <div class="table-container rounded-lg border border-gray-200">
-                    <div class="inline-block min-w-full align-middle">
-                        <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
+                    <div class="block w-full align-middle">
+                        <table class="w-full divide-y divide-gray-200">
                         <thead class="table-header">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Resident ID</th>

@@ -5,6 +5,7 @@
 
 import { initWebSocket, cleanupWebSocket } from './websocket.js';
 import { initClock } from './clock.js';
+import { initSharedClock } from '../shared/clock.js';
 import { initWeather, fetchWeatherData } from './weather.js';
 import { initializeCharts } from './charts.js';
 import { initVisitorStats } from './visitorStats.js';
@@ -28,7 +29,9 @@ function initDashboard() {
         }
     }
 
-    // Initialize clock
+    // Initialize clock (shared clock for consistent date display across all pages)
+    initSharedClock();
+    // Also initialize dashboard-specific clock for additional features if needed
     initClock();
 
     // Initialize weather
