@@ -14,20 +14,11 @@ $method = $_SERVER["REQUEST_METHOD"];
  * POST /api/residents/delete.php?id={id} - Delete a resident (alternative method)
  */
 if ($method === "DELETE" || $method === "POST") {
-    $id = $_GET["id"] ?? null;
-
-    if (empty($id)) {
-        http_response_code(400);
-        echo json_encode(["error" => "Resident ID is required"]);
-        exit;
-    }
-
-    $residentsController = new ResidentController();
-    $result = $residentsController->delete($id);
-    
-    $status = $result["success"] ? 200 : 400;
-    http_response_code($status);
-    echo json_encode($result);
+    http_response_code(403);
+    echo json_encode([
+        "success" => false,
+        "error" => "Residents are managed by profiling-system. Deletion is not allowed here."
+    ]);
     exit;
 }
 

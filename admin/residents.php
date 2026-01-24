@@ -17,11 +17,11 @@ $perPage = 10; // Records per page
 
 // Get filters
 $filters = [];
-if (isset($_GET['status_type']) && !empty($_GET['status_type'])) {
-    $filters['status_type'] = $_GET['status_type'];
+if (isset($_GET['is_pwd']) && !empty($_GET['is_pwd'])) {
+    $filters['is_pwd'] = $_GET['is_pwd'];
 }
-if (isset($_GET['is_active']) && $_GET['is_active'] !== '') {
-    $filters['is_active'] = intval($_GET['is_active']);
+if (isset($_GET['is_deceased']) && !empty($_GET['is_deceased'])) {
+    $filters['is_deceased'] = $_GET['is_deceased'];
 }
 
 // Get data from controller
@@ -32,6 +32,68 @@ $data = $residentController->getPaginatedResidents($currentPage, $perPage, $sear
 $residents = $data['residents'];
 $pagination = $data['pagination'];
 $searchQuery = $data['searchQuery'];
+
+// Determine fingerprint registration status using attendance-system data ONLY.
+// - Residents can be enrolled directly (resident_fingerprints) OR via employee enrollment (employee_fingerprints) if linked.
+try {
+    $db = (new Database())->connect();
+
+    $residentIds = [];
+    if (is_array($residents)) {
+        foreach ($residents as $r) {
+            if (!empty($r['resident_id'])) {
+                $residentIds[] = (int) $r['resident_id'];
+            }
+        }
+    }
+
+    // employees table may not exist (employees are owned by profiling-system).
+    // For fingerprint status, treat resident_id as the employee_fingerprints key when present.
+    $employeeIdByResidentId = [];
+    if (!empty($residentIds)) {
+        foreach ($residentIds as $rid) {
+            $employeeIdByResidentId[(int) $rid] = (string) $rid;
+        }
+    }
+
+    $employeeIds = array_values(array_unique(array_filter(array_values($employeeIdByResidentId))));
+    $enrolledEmployeeIds = [];
+    if (!empty($employeeIds)) {
+        $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+        $stmt = $db->prepare("SELECT employee_id FROM employee_fingerprints WHERE employee_id IN ({$placeholders})");
+        $stmt->execute($employeeIds);
+        $enrolledEmployeeIds = array_flip(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
+    $enrolledResidentIds = [];
+    if (!empty($residentIds)) {
+        $placeholders = implode(',', array_fill(0, count($residentIds), '?'));
+        $stmt = $db->prepare("SELECT resident_id FROM resident_fingerprints WHERE resident_id IN ({$placeholders})");
+        $stmt->execute($residentIds);
+        $enrolledResidentIds = array_flip(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
+    if (is_array($residents)) {
+        foreach ($residents as &$resident) {
+            $rid = !empty($resident['resident_id']) ? (int) $resident['resident_id'] : 0;
+            $employeeId = $rid && isset($employeeIdByResidentId[$rid]) ? $employeeIdByResidentId[$rid] : null;
+            $resident['employee_id'] = $employeeId;
+            $residentHas = ($rid && isset($enrolledResidentIds[(string) $rid]));
+            $employeeHas = ($employeeId !== null && isset($enrolledEmployeeIds[(string) $employeeId]));
+            $resident['has_fingerprint'] = ($residentHas || $employeeHas);
+        }
+        unset($resident);
+    }
+} catch (Exception $e) {
+    if (is_array($residents)) {
+        foreach ($residents as &$resident) {
+            $resident['employee_id'] = $resident['employee_id'] ?? null;
+            $resident['has_fingerprint'] = false;
+        }
+        unset($resident);
+    }
+    error_log("Error determining resident fingerprint status: " . $e->getMessage());
+}
 
 // $employeeCurrentActivities = (new EmployeeController())->getEmployeeCurrentActivity();
 // $departmentLists = (new DepartmentController())->getDepartmentLists();
@@ -124,7 +186,7 @@ $searchQuery = $data['searchQuery'];
                 <div class="flex justify-between items-center mb-1">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800">Resident Directory</h1>
-                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage all current and past resident in one place.</p>
+                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Read-only list from profiling-system.</p>
                     </div>
                     <div class="flex items-center gap-4">
                         <p class="text-sm text-gray-500" id="current-date">September 28, 2025</p>
@@ -138,6 +200,11 @@ $searchQuery = $data['searchQuery'];
 
             <!-- RESIDENT MANAGEMENT SECTION -->
             <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <?php if (!empty($_GET['error'])): ?>
+                    <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                        <?= htmlspecialchars($_GET['error']) ?>
+                    </div>
+                <?php endif; ?>
                 
                 <!-- Controls: Search, Filter, and Add Button -->
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
@@ -163,11 +230,11 @@ $searchQuery = $data['searchQuery'];
                                 Search
                             </button>
                             <!-- Preserve filter parameters -->
-                            <?php if (isset($_GET['status_type']) && !empty($_GET['status_type'])): ?>
-                                <input type="hidden" name="status_type" value="<?= htmlspecialchars($_GET['status_type']) ?>">
+                            <?php if (isset($_GET['is_pwd']) && !empty($_GET['is_pwd'])): ?>
+                                <input type="hidden" name="is_pwd" value="<?= htmlspecialchars($_GET['is_pwd']) ?>">
                             <?php endif; ?>
-                            <?php if (isset($_GET['is_active']) && $_GET['is_active'] !== ''): ?>
-                                <input type="hidden" name="is_active" value="<?= htmlspecialchars($_GET['is_active']) ?>">
+                            <?php if (isset($_GET['is_deceased']) && !empty($_GET['is_deceased'])): ?>
+                                <input type="hidden" name="is_deceased" value="<?= htmlspecialchars($_GET['is_deceased']) ?>">
                             <?php endif; ?>
                         </form>
                         <!-- Filter Button -->
@@ -179,11 +246,9 @@ $searchQuery = $data['searchQuery'];
                         </button>
                     </div>
 
-                    <!-- Add Employee Button -->
-                    <a href="residents/create.php" class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Register New Resident
-                    </a>
+                    <div class="w-full sm:w-auto text-xs text-gray-500 sm:text-sm">
+                        Residents are managed in profiling-system. Create or edit them there.
+                    </div>
                 </div>
 
                 <!-- Resident Table -->
@@ -198,8 +263,8 @@ $searchQuery = $data['searchQuery'];
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Last Name</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Age</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Address</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">PWD</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Life Status</th>
 
                                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
 
@@ -244,60 +309,43 @@ $searchQuery = $data['searchQuery'];
                                         <?= ucfirst($resident['barangay'] ?? '') ?><?= isset($resident['municipality_city']) ? ', ' . ucfirst($resident['municipality_city']) : '' ?>
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                        <?php 
-                                        // Display status_type from resident_status table
-                                        // status_type indicates what type of resident: 'Senior Citizen', 'PWD', 'Solo Parent', 'Indigent', 'Other'
-                                        echo !empty($resident['status_type']) ? htmlspecialchars($resident['status_type']) : '-';
+                                        <?php
+                                            $pwdVal = $resident['is_pwd'] ?? null;
+                                            echo htmlspecialchars(($pwdVal !== null && $pwdVal !== '') ? $pwdVal : 'N/A');
                                         ?>
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                        <?php 
-                                        // Display is_active from resident_status table
-                                        // is_active indicates if resident is alive (1) or deceased (0)
-                                        if (isset($resident['is_active'])) {
-                                            if ($resident['is_active'] == 1) {
-                                                echo '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Alive</span>';
-                                            } else {
-                                                echo '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Deceased</span>';
-                                            }
-                                        } else {
-                                            echo '-';
-                                        }
+                                        <?php
+                                            $deceasedVal = $resident['is_deceased'] ?? null;
+                                            echo htmlspecialchars(($deceasedVal !== null && $deceasedVal !== '') ? $deceasedVal : 'N/A');
                                         ?>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center space-x-2">
-                                            <a 
-                                                href="residents/view.php?id=<?= htmlspecialchars($resident['resident_id'] ?? '') ?>"
-                                                class="view inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1" 
-                                                title="View Details">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                                </svg>
-                                                View
-                                            </a>
-                                            <a 
-                                                href="residents/edit.php?id=<?= htmlspecialchars($resident['resident_id'] ?? '') ?>"
-                                                class="edit-link inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
-                                                title="Edit Resident"
-                                                style="text-decoration: none; cursor: pointer;"
-                                                onclick="window.location.href=this.href; return false;">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                                </svg>
-                                                Edit
-                                            </a>
-                                            <button 
-                                                class="delete inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
-                                                data-id="<?= htmlspecialchars($resident['resident_id'] ?? '') ?>"
-                                                data-name="<?= htmlspecialchars(($resident['first_name'] ?? '') . ' ' . ($resident['last_name'] ?? '')) ?>"
-                                                title="Delete Resident">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                                Delete
-                                            </button>
+                                            <?php if (!empty($resident['has_fingerprint'])): ?>
+                                                <button
+                                                    class="view inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                                                    data-id="<?= htmlspecialchars($resident['resident_id'] ?? '') ?>"
+                                                    title="View Details">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                    </svg>
+                                                    View
+                                                </button>
+                                            <?php else: ?>
+                                                <button
+                                                    type="button"
+                                                    onclick="window.location.href='biometrics://enroll?resident_id=<?= htmlspecialchars($resident['resident_id'] ?? '') ?>'"
+                                                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                                    title="Enroll Fingerprint">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4a6 6 0 00-6 6v3a2 2 0 01-2 2h0"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 10v3a6 6 0 01-6 6h-1"></path>
+                                                    </svg>
+                                                    Enroll
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -343,11 +391,11 @@ $searchQuery = $data['searchQuery'];
                         if (!empty($searchQuery)) {
                             $queryParams[] = 'search=' . urlencode($searchQuery);
                         }
-                        if (!empty($filters['status_type'])) {
-                            $queryParams[] = 'status_type=' . urlencode($filters['status_type']);
+                        if (!empty($filters['is_pwd'])) {
+                            $queryParams[] = 'is_pwd=' . urlencode($filters['is_pwd']);
                         }
-                        if (isset($filters['is_active']) && $filters['is_active'] !== '') {
-                            $queryParams[] = 'is_active=' . $filters['is_active'];
+                        if (!empty($filters['is_deceased'])) {
+                            $queryParams[] = 'is_deceased=' . urlencode($filters['is_deceased']);
                         }
                         $queryString = !empty($queryParams) ? '&' . implode('&', $queryParams) : '';
                         ?>
@@ -533,11 +581,7 @@ $searchQuery = $data['searchQuery'];
 
                             <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
                                 <button type="button" id="cancelShowResidentModal" class="w-full sm:w-auto px-6 py-3 text-base font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Cancel
-                                </button>
-                                <button type="submit" form="employee-registration-form" id="addEmployeeBtn" class="w-full sm:w-auto px-6 py-3 text-base font-semibold text-white bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    <svg class="w-5 h-5 inline-block mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
-                                    Register Employee
+                                    Close
                                 </button>
                             </div>
 
@@ -547,61 +591,7 @@ $searchQuery = $data['searchQuery'];
 
                 <!-- End modal -->
 
-                <!-- Modal : Edit Employee -->
-
-                 <div id="editEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
-
-                    <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform sm:my-8">
-
-                            <div class="flex items-start justify-between p-5 border-b border-gray-200">
-                                <h3 class="text-xl font-semibold text-gray-800" id="modal-title">
-                                    Employee Record
-                                </h3>
-                                <button type="button" id="closeEditEmployeeModal" class="text-gray-400 hover:text-gray-600 focus:outline-none">
-                                    <span class="sr-only">Close modal</span>
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                            </div>
-
-                            <div class="p-6 space-y-4">
-                                <p class="text-sm text-gray-500">Employee Profile</p>
-                                <div class="content">
-                                    <div>
-                                        <label for="employee_id" class="block text-sm font-medium text-gray-700">Employee Id</label>
-                                        <input type="text" name="employee_id" id="edit_modal_employee_id" disabled class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    </div>
-                                    <div class="flex gap-2 mt-2">
-                                        <div>
-                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">First Name</label>
-                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                        <div>
-                                            <label for="employee_id" class="block text-sm font-medium text-gray-700">Last Name</label>
-                                            <input type="text" name="employee_id" id="edit_modal_employee_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                
-                                
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row justify-end p-5 space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200">
-                                <button type="button" id="cancelEditEmployeeModal" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none">
-                                    Cancel
-                                </button>
-                                <button type="submit" id="addEmployeeBtn" class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg btn-primary shadow-md hover:shadow-lg transition-colors">
-                                    Save Employee
-                                </button>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                <!-- End modal -->
+                <!-- Edit Employee modal removed (attendance-system is read-only for resident/employee master data) -->
 
                 <!-- Filter Modal -->
                 <div id="filterModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="filter-modal-title" role="dialog" aria-modal="true">
@@ -626,30 +616,27 @@ $searchQuery = $data['searchQuery'];
                                         <input type="hidden" name="search" value="<?= htmlspecialchars($searchQuery) ?>">
                                     <?php endif; ?>
 
-                                    <!-- Status Type Filter -->
+                                    <!-- PWD Filter -->
                                     <div>
-                                        <label for="filter_status_type" class="block text-sm font-medium text-gray-700 mb-2">
-                                            Status Type
+                                        <label for="filter_is_pwd" class="block text-sm font-medium text-gray-700 mb-2">
+                                            PWD
                                         </label>
-                                        <select name="status_type" id="filter_status_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">All Status Types</option>
-                                            <option value="Senior Citizen" <?= (isset($filters['status_type']) && $filters['status_type'] === 'Senior Citizen') ? 'selected' : '' ?>>Senior Citizen</option>
-                                            <option value="PWD" <?= (isset($filters['status_type']) && $filters['status_type'] === 'PWD') ? 'selected' : '' ?>>PWD</option>
-                                            <option value="Solo Parent" <?= (isset($filters['status_type']) && $filters['status_type'] === 'Solo Parent') ? 'selected' : '' ?>>Solo Parent</option>
-                                            <option value="Indigent" <?= (isset($filters['status_type']) && $filters['status_type'] === 'Indigent') ? 'selected' : '' ?>>Indigent</option>
-                                            <option value="Other" <?= (isset($filters['status_type']) && $filters['status_type'] === 'Other') ? 'selected' : '' ?>>Other</option>
+                                        <select name="is_pwd" id="filter_is_pwd" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All</option>
+                                            <option value="Yes" <?= (isset($filters['is_pwd']) && $filters['is_pwd'] === 'Yes') ? 'selected' : '' ?>>Yes</option>
+                                            <option value="No" <?= (isset($filters['is_pwd']) && $filters['is_pwd'] === 'No') ? 'selected' : '' ?>>No</option>
                                         </select>
                                     </div>
 
-                                    <!-- Life Status Filter -->
+                                    <!-- Status Filter (is_deceased in profiling-system) -->
                                     <div>
-                                        <label for="filter_is_active" class="block text-sm font-medium text-gray-700 mb-2">
-                                            Life Status
+                                        <label for="filter_is_deceased" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Status
                                         </label>
-                                        <select name="is_active" id="filter_is_active" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <select name="is_deceased" id="filter_is_deceased" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">All</option>
-                                            <option value="1" <?= (isset($filters['is_active']) && $filters['is_active'] == 1) ? 'selected' : '' ?>>Alive</option>
-                                            <option value="0" <?= (isset($filters['is_active']) && $filters['is_active'] == 0) ? 'selected' : '' ?>>Deceased</option>
+                                            <option value="Yes" <?= (isset($filters['is_deceased']) && $filters['is_deceased'] === 'Yes') ? 'selected' : '' ?>>Yes</option>
+                                            <option value="No" <?= (isset($filters['is_deceased']) && $filters['is_deceased'] === 'No') ? 'selected' : '' ?>>No</option>
                                         </select>
                                     </div>
                                 </div>

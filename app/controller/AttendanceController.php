@@ -1,18 +1,21 @@
 <?php
 
 class AttendanceController {
+    protected $db;
     protected $attendanceRepository;
-    protected $employeeRepository;
     protected $residentRepository;
     protected $windowRepository;
+    protected $fingerprintsRepository;
+    protected $profilingDbName;
 
     public function __construct()
     {
-        $db = (new Database())->connect();
-        $this->attendanceRepository = new AttendanceRepository($db);
-        $this->employeeRepository = new EmployeeRepository($db);
-        $this->residentRepository = new ResidentRepository($db);
-        $this->windowRepository = new AttendanceWindowRepository($db);
+        $this->db = (new Database())->connect();
+        $this->attendanceRepository = new AttendanceRepository($this->db);
+        $this->residentRepository = new ResidentRepository($this->db);
+        $this->windowRepository = new AttendanceWindowRepository($this->db);
+        $this->fingerprintsRepository = new FingerprintsRepository($this->db);
+        $this->profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
     }
     // public function index()
     // {
@@ -45,18 +48,48 @@ class AttendanceController {
         $attendances = $this->attendanceRepository->findAll();
         $lastAttendance = $this->attendanceRepository->getLast();
 
-        $employee = null;
-        $resident = null;
+        $employee = null; // kept for backwards compatibility in response payload
+        $resident = null; // used by frontend as "person info" (we map from profiling-system.barangay_official)
         $correspondingAttendance = null;
 
         if ($lastAttendance) {
             $employeeId = is_object($lastAttendance) ? $lastAttendance->employee_id : $lastAttendance['employee_id'];
-            $employee = $this->employeeRepository->getWithPosition($employeeId);
-            
-            if ($employee) {
-                $residentId = is_object($employee) ? $employee->resident_id : $employee['resident_id'];
-                $resident = $this->residentRepository->findById($residentId);
+
+            // Employees are sourced from profiling-system.barangay_official (read-only).
+            // Map official -> resident-like payload for existing frontend code that expects first_name/last_name.
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT
+                        bo.id AS employee_id,
+                        bo.first_name,
+                        bo.middle_name,
+                        bo.surname AS last_name,
+                        bo.chairmanship AS department_name,
+                        bo.position AS position_name,
+                        bo.status AS activity_name
+                    FROM `{$this->profilingDbName}`.`barangay_official` AS bo
+                    WHERE bo.id = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([(string) $employeeId]);
+                $official = $stmt->fetch(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $official = null;
             }
+
+            $employee = [
+                "employee_id" => (string) $employeeId,
+                "position_name" => $official['position_name'] ?? null,
+                "department_name" => $official['department_name'] ?? null,
+            ];
+
+            $resident = $official ? [
+                "resident_id" => null,
+                "first_name" => $official['first_name'] ?? null,
+                "middle_name" => $official['middle_name'] ?? null,
+                "last_name" => $official['last_name'] ?? null,
+                "suffix" => null,
+            ] : null;
             
             // Get the corresponding attendance (in/out pair) for the same date
             $window = is_object($lastAttendance) ? $lastAttendance->window : $lastAttendance['window'];
@@ -113,6 +146,17 @@ class AttendanceController {
             return;
         }
 
+        // Normalize employee_id (C# client may send form-encoded strings with whitespace)
+        $data["employee_id"] = trim($data["employee_id"]);
+        if ($data["employee_id"] === '') {
+            http_response_code(422);
+            echo json_encode([
+                "success" => false,
+                "error"   => "Employee ID is required"
+            ]);
+            return;
+        }
+
         if (!isset($data["window"]) || empty($data["window"])) {
             http_response_code(422);
             echo json_encode([
@@ -143,15 +187,21 @@ class AttendanceController {
             return;
         }
 
-        // Validate that employee_id exists in employees table
-        $employee = $this->employeeRepository->findById($data["employee_id"]);
-        if (!$employee) {
+        // Validate that employee_id is enrolled in employee_fingerprints (source of truth for biometric templates)
+        // This avoids reliance on attendance_system.employees (which may be removed if employees live in profiling-system).
+        // Also normalizes numeric IDs (e.g., "001" -> "1") based on what's stored in employee_fingerprints.
+        $fingerprint = $this->fingerprintsRepository->findByEmployeeIdentifier($data["employee_id"]);
+        if (!$fingerprint) {
             http_response_code(404);
             echo json_encode([
                 "success" => false,
                 "error"   => "Employee not found. Only employees can log attendance."
             ]);
             return;
+        }
+        $storedEmployeeId = is_object($fingerprint) ? ($fingerprint->employee_id ?? null) : ($fingerprint['employee_id'] ?? null);
+        if ($storedEmployeeId) {
+            $data["employee_id"] = (string) $storedEmployeeId;
         }
 
         // Check if already logged today (window is already normalized to lowercase)

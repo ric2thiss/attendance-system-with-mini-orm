@@ -3,6 +3,10 @@ require_once __DIR__ . "/../../bootstrap.php";
 require_once __DIR__ . "/../../auth/helpers.php";
 requireAuth(); // Require authentication - redirects to login if not authenticated
 
+// Residents are managed by profiling-system
+header("Location: ../residents.php?error=Residents are managed by profiling-system.");
+exit;
+
 include_once '../../shared/components/Sidebar.php';
 include_once '../../shared/components/Breadcrumb.php';
 

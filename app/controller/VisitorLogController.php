@@ -17,43 +17,55 @@ class VisitorLogController {
      * @return array
      */
     public function store(array $data): array {
-        // Validate required fields
-        $requiredFields = ['first_name', 'last_name', 'address', 'purpose'];
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                return [
-                    'success' => false,
-                    'error' => "Field '{$field}' is required"
-                ];
+        $residentId = isset($data['resident_id']) && !empty($data['resident_id']) ? (int) $data['resident_id'] : null;
+        $isResident = $residentId !== null;
+
+        if ($isResident && !$this->residentRepository->existsById($residentId)) {
+            return [
+                'success' => false,
+                'error' => "Resident not found in profiling system."
+            ];
+        }
+
+        // Validate required fields for non-residents
+        if (!$isResident) {
+            $requiredFields = ['first_name', 'last_name', 'address', 'purpose'];
+            foreach ($requiredFields as $field) {
+                if (empty($data[$field])) {
+                    return [
+                        'success' => false,
+                        'error' => "Field '{$field}' is required"
+                    ];
+                }
             }
+        } elseif (empty($data['purpose'])) {
+            return [
+                'success' => false,
+                'error' => "Field 'purpose' is required"
+            ];
         }
 
         // Set defaults
         $logData = [
-            'first_name' => trim($data['first_name']),
-            'middle_name' => isset($data['middle_name']) ? trim($data['middle_name']) : null,
-            'last_name' => trim($data['last_name']),
-            'address' => trim($data['address']),
+            'first_name' => $isResident ? null : trim($data['first_name'] ?? ''),
+            'middle_name' => $isResident ? null : (isset($data['middle_name']) ? trim($data['middle_name']) : null),
+            'last_name' => $isResident ? null : trim($data['last_name'] ?? ''),
+            'address' => $isResident ? null : trim($data['address'] ?? ''),
             'purpose' => trim($data['purpose']),
-            'is_resident' => isset($data['is_resident']) ? ($data['is_resident'] ? 1 : 0) : 0,
+            'is_resident' => $isResident ? 1 : 0,
             'had_booking' => isset($data['had_booking']) ? ($data['had_booking'] ? 1 : 0) : 0,
             'booking_id' => isset($data['booking_id']) ? trim($data['booking_id']) : null,
         ];
 
         // Handle resident_id
-        if (isset($data['resident_id']) && !empty($data['resident_id'])) {
-            $logData['resident_id'] = (int)$data['resident_id'];
-            $logData['is_resident'] = 1;
-        } else {
-            $logData['resident_id'] = null;
-            $logData['is_resident'] = 0;
-        }
+        $logData['resident_id'] = $residentId;
 
         // Handle birthdate (required for non-residents, optional for residents)
-        if (isset($data['birthdate']) && !empty($data['birthdate'])) {
+        if ($isResident) {
+            $logData['birthdate'] = null;
+        } elseif (isset($data['birthdate']) && !empty($data['birthdate'])) {
             $logData['birthdate'] = $data['birthdate'];
-        } elseif (!$logData['is_resident']) {
-            // Birthdate is required for non-residents
+        } else {
             return [
                 'success' => false,
                 'error' => 'Birthdate is required for non-resident visitors'

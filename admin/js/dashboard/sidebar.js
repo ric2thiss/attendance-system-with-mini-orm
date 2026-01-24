@@ -1,7 +1,49 @@
 /**
- * Sidebar Toggle Module
+ * Sidebar Toggle Module for Dashboard
  * Handles sidebar toggle functionality on all screen sizes
+ * Includes dynamic app name from database
  */
+
+import getBaseUrl from '../shared/baseUrl.js';
+
+/**
+ * Fetch app name from settings API
+ */
+async function fetchAppName() {
+    try {
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${getBaseUrl()}/api/settings/public.php?_=${timestamp}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.app_name) {
+            return data.data.app_name.value || 'Attendance System';
+        }
+        
+        return 'Attendance System';
+    } catch (error) {
+        console.error('Error fetching app name:', error);
+        return 'Attendance System';
+    }
+}
+
+/**
+ * Update app name in sidebar
+ */
+async function updateAppName() {
+    const appNameElement = document.getElementById('app-name');
+    
+    if (!appNameElement) {
+        return;
+    }
+    
+    const appName = await fetchAppName();
+    appNameElement.textContent = appName;
+}
 
 /**
  * Initialize sidebar toggle functionality
@@ -14,6 +56,9 @@ export function initSidebar() {
     if (!sidebar || !toggleButton || !mainContent) {
         return;
     }
+
+    // Load app name from database
+    updateAppName();
 
     // Function to toggle sidebar
     function toggleSidebar() {

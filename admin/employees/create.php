@@ -3,6 +3,10 @@ require_once __DIR__ . "/../../bootstrap.php";
 require_once __DIR__ . "/../../auth/helpers.php";
 requireAuth(); // Require authentication - redirects to login if not authenticated
 
+// Employees are owned/managed by profiling-system (barangay_official). attendance-system is read-only.
+header("Location: ../employees.php?error=" . urlencode("Employee creation is disabled. Manage employees in the profiling-system database."));
+exit;
+
 include_once '../../shared/components/Sidebar.php';
 include_once '../../shared/components/Breadcrumb.php';
 

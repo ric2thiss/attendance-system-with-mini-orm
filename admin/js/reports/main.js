@@ -29,40 +29,62 @@ let currentData = null;
 
 // Report type configuration
 const reportConfigs = {
-    'attendance-department': {
-        title: 'Total Hours Worked by Department',
+    'attendance-position': {
+        title: 'Total Hours Worked by Position',
         chartLabel: 'Total Hours',
-        tableHeaders: ['Department', 'Total Employees', 'Total Hours (h)', 'Avg. Hours/Emp', 'Total Attendance'],
+        tableHeaders: ['Position', 'Total Employees', 'Total Attendance', 'Total Hours (h)', 'Avg. Hours/Emp'],
         getChartValue: (row) => row.total_hours,
+        getChartLabel: (row) => row.position,
         getTableRow: (row) => [
-            row.department,
-            row.total_employees,
-            row.total_hours.toLocaleString(),
-            row.avg_hours_per_employee.toFixed(1),
-            row.total_attendance
-        ]
-    },
-    'attendance-count': {
-        title: 'Attendance Count by Department',
-        chartLabel: 'Attendance Count',
-        tableHeaders: ['Department', 'Total Employees', 'Total Attendance', 'Total Days', 'Avg. Attendance/Day'],
-        getChartValue: (row) => row.total_attendance,
-        getTableRow: (row) => [
-            row.department,
+            row.position,
             row.total_employees,
             row.total_attendance,
-            row.total_days,
-            row.total_days > 0 ? (row.total_attendance / row.total_days).toFixed(1) : '0.0'
+            row.total_hours.toLocaleString(),
+            row.avg_hours_per_employee.toFixed(1)
         ]
     },
-    'employee-department': {
-        title: 'Employee Distribution by Department',
-        chartLabel: 'Number of Employees',
-        tableHeaders: ['Department', 'Total Employees'],
-        getChartValue: (row) => row.total_employees,
+    'attendance-chairmanship': {
+        title: 'Total Hours Worked by Chairmanship',
+        chartLabel: 'Total Hours',
+        tableHeaders: ['Chairmanship', 'Total Employees', 'Total Attendance', 'Total Hours (h)', 'Avg. Hours/Emp'],
+        getChartValue: (row) => row.total_hours,
+        getChartLabel: (row) => row.chairmanship,
         getTableRow: (row) => [
-            row.department,
-            row.total_employees
+            row.chairmanship,
+            row.total_employees,
+            row.total_attendance,
+            row.total_hours.toLocaleString(),
+            row.avg_hours_per_employee.toFixed(1)
+        ]
+    },
+    'attendance-employee': {
+        title: 'Total Hours Worked by Employee',
+        chartLabel: 'Total Hours',
+        tableHeaders: ['Employee Name', 'Position', 'Chairmanship', 'Total Attendance', 'Total Hours (h)'],
+        getChartValue: (row) => row.total_hours,
+        getChartLabel: (row) => row.employee_name,
+        getTableRow: (row) => [
+            row.employee_name,
+            row.position,
+            row.chairmanship,
+            row.total_attendance,
+            row.total_hours.toLocaleString()
+        ]
+    },
+    'attendance-daily': {
+        title: 'Daily Attendance Summary',
+        chartLabel: 'Total Hours',
+        tableHeaders: ['Date', 'Employee Name', 'Position', 'Chairmanship', 'Time In', 'Time Out', 'Total Hours'],
+        getChartValue: (row) => row.total_hours,
+        getChartLabel: (row) => row.date + ' - ' + row.employee_name.substring(0, 15),
+        getTableRow: (row) => [
+            row.date,
+            row.employee_name,
+            row.position,
+            row.chairmanship,
+            row.time_in,
+            row.time_out,
+            row.total_hours.toFixed(2)
         ]
     }
 };
@@ -126,9 +148,9 @@ function renderChart(data, config) {
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // X scale (Departments - band scale)
+    // X scale (Labels - band scale)
     const x = d3.scaleBand()
-        .domain(data.map(d => d.department))
+        .domain(data.map(d => config.getChartLabel(d)))
         .range([0, width])
         .padding(0.2);
 
@@ -155,7 +177,7 @@ function renderChart(data, config) {
         .data(data)
         .enter()
         .append("rect")
-        .attr("x", d => x(d.department))
+        .attr("x", d => x(config.getChartLabel(d)))
         .attr("y", d => y(config.getChartValue(d)))
         .attr("width", x.bandwidth())
         .attr("height", d => height - y(config.getChartValue(d)))

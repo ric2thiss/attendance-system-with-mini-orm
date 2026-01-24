@@ -25,35 +25,31 @@ if ($method === "GET") {
 
     try {
         $db = (new Database())->connect();
-        $attendanceRepository = new AttendanceRepository($db);
-        $employeeRepository = new EmployeeRepository($db);
+        $profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
 
-        // Verify employee exists
-        $employee = $employeeRepository->getWithPosition($employeeId);
-        if (!$employee) {
-            http_response_code(404);
-            echo json_encode([
-                "success" => false,
-                "error" => "Employee not found"
-            ]);
-            exit;
-        }
+        // Use the provided employee_id directly.
+        // We intentionally do NOT require the employee to be enrolled in employee_fingerprints
+        // so DTR can still be viewed for employees with attendance logs but no stored template.
+        $employeeIdValue = (string) $employeeId;
 
-        // Get employee name
-        $employeeIdValue = is_object($employee) ? $employee->employee_id : $employee['employee_id'];
-        $residentId = is_object($employee) ? $employee->resident_id : $employee['resident_id'];
-        
-        $residentRepository = new ResidentRepository($db);
-        $resident = $residentRepository->findById($residentId);
-        
         $employeeName = '';
-        if ($resident) {
-            $firstName = is_object($resident) ? $resident->first_name : $resident['first_name'];
-            $lastName = is_object($resident) ? $resident->last_name : $resident['last_name'];
-            $middleName = is_object($resident) ? ($resident->middle_name ?? '') : ($resident['middle_name'] ?? '');
-            $suffix = is_object($resident) ? ($resident->suffix ?? '') : ($resident['suffix'] ?? '');
-            
-            $employeeName = trim("$firstName " . ($middleName ? "$middleName " : "") . "$lastName " . ($suffix ? $suffix : ""));
+        try {
+            $stmt = $db->prepare("
+                SELECT bo.first_name, bo.middle_name, bo.surname AS last_name
+                FROM `{$profilingDbName}`.`barangay_official` AS bo
+                WHERE bo.id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([(string) $employeeIdValue]);
+            $bo = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($bo) {
+                $firstName = $bo['first_name'] ?? '';
+                $middleName = $bo['middle_name'] ?? '';
+                $lastName = $bo['last_name'] ?? '';
+                $employeeName = trim($firstName . ' ' . ($middleName ? ($middleName . ' ') : '') . $lastName);
+            }
+        } catch (Exception $e) {
+            // keep empty name on failure
         }
 
         // Build date filter
@@ -95,9 +91,18 @@ if ($method === "GET") {
         $groupedByDate = [];
         $anomalies = [];
 
+        $normalizeWindow = function ($value): string {
+            $v = strtolower(trim((string) $value));
+            // Make matching resilient to legacy values like "Morning In" / "morning in" / "morning-in"
+            $v = str_replace([' ', '-'], '_', $v);
+            // Collapse repeated underscores
+            $v = preg_replace('/_+/', '_', $v);
+            return $v ?: '';
+        };
+
         foreach ($records as $record) {
             $date = date('Y-m-d', strtotime($record['timestamp']));
-            $window = strtolower(trim($record['window']));
+            $window = $normalizeWindow($record['window_label'] ?? ($record['window'] ?? ''));
             
             if (!isset($groupedByDate[$date])) {
                 $groupedByDate[$date] = [

@@ -160,15 +160,15 @@ try {
             break;
             
         case 'gender-distribution':
-            // Gender distribution (join with residents table for resident visitors)
+            // Gender distribution (join with profiling-system residents for resident visitors)
             $query = "
                 SELECT 
-                    COALESCE(r.gender, 'Unknown') as gender,
+                    COALESCE(r.sex, 'Unknown') as gender,
                     COUNT(*) as count
                 FROM visitor_logs vl
-                LEFT JOIN residents r ON vl.resident_id = r.resident_id AND vl.is_resident = 1
+                LEFT JOIN `" . PROFILING_DB_NAME . "`.`residents` r ON vl.resident_id = r.id AND vl.is_resident = 1
                 WHERE DATE(vl.created_at) BETWEEN ? AND ?
-                GROUP BY COALESCE(r.gender, 'Unknown')
+                GROUP BY COALESCE(r.sex, 'Unknown')
                 ORDER BY count DESC
             ";
             

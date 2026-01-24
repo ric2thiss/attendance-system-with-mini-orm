@@ -4,6 +4,7 @@
  */
 export class ActivityLogger {
     constructor(logListId = 'logList') {
+        this.logListId = logListId;
         this.logList = document.getElementById(logListId);
     }
 
@@ -11,7 +12,17 @@ export class ActivityLogger {
      * Add log entry
      */
     addLogEntry(name, action = 'Check-in') {
+        // Re-acquire element in case module initialized before DOM was fully ready
+        if (!this.logList) {
+            this.logList = document.getElementById(this.logListId);
+        }
         if (!this.logList) return;
+
+        // Remove placeholder if present
+        const firstLi = this.logList.querySelector('li');
+        if (firstLi && firstLi.textContent && firstLi.textContent.includes('No recent activity')) {
+            firstLi.remove();
+        }
 
         const li = document.createElement("li");
         const now = new Date();

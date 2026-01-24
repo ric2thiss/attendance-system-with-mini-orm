@@ -81,12 +81,6 @@ $reportType = isset($_GET['type']) ? trim($_GET['type']) : 'total-visitors';
                     </select>
                 </div>
 
-                <!-- Month Filter -->
-                <div class="w-full md:w-1/4">
-                    <label for="monthFilter" class="block text-sm font-medium text-gray-700 mb-1">Month</label>
-                    <input type="month" id="monthFilter" value="<?= date('Y-m') ?>" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                </div>
-
                 <!-- Date Range (Start) -->
                 <div class="w-full md:w-1/4">
                     <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>

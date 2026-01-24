@@ -2,10 +2,18 @@
 
 class EmployeeController {
     protected $employeeRepository;
+    protected $residentRepository;
+
+    private function isMissingEmployeesTable(PDOException $e): bool
+    {
+        $msg = strtolower($e->getMessage());
+        return ($e->getCode() === '42S02') || (str_contains($msg, 'employees') && str_contains($msg, "doesn't exist"));
+    }
 
     public function __construct() {
         $db = (new Database())->connect();
         $this->employeeRepository = new EmployeeRepository($db);
+        $this->residentRepository = new ResidentRepository($db);
     }
 
     public function store($data)
@@ -34,43 +42,18 @@ class EmployeeController {
         }
 
         try {
+            $residentId = (int) $data["resident_id"];
+            if (!$this->residentRepository->existsById($residentId)) {
+                return [
+                    "success" => false,
+                    "status"  => 404,
+                    "error"   => "Resident not found in profiling system."
+                ];
+            }
+
             $createdEmployee = $this->employeeRepository->create($data);
 
             if ($createdEmployee) {
-                // Copy resident fingerprint template to employee fingerprints
-                try {
-                    $db = (new Database())->connect();
-                    $residentFingerprintsRepository = new ResidentFingerprintsRepository($db);
-                    $fingerprintsRepository = new FingerprintsRepository($db);
-                    
-                    $residentId = intval($data["resident_id"]);
-                    $residentFingerprint = $residentFingerprintsRepository->findByResidentId($residentId);
-                    
-                    if ($residentFingerprint) {
-                        // Get template - handle both object and array
-                        $template = is_object($residentFingerprint) 
-                            ? ($residentFingerprint->template ?? null)
-                            : ($residentFingerprint['template'] ?? null);
-                        
-                        if (!empty($template)) {
-                            // Check if employee fingerprint already exists
-                            if (!$fingerprintsRepository->existsByEmployeeId($data["employee_id"])) {
-                                $fingerprintsRepository->create([
-                                    "employee_id" => $data["employee_id"],
-                                    "template" => $template
-                                ]);
-                            }
-                        }
-                    }
-                } catch (PDOException $fingerprintErr) {
-                    // Log the fingerprint error but don't fail the employee creation
-                    // The employee was already created successfully
-                    error_log("Failed to copy fingerprint template for employee {$data['employee_id']}: " . $fingerprintErr->getMessage());
-                } catch (Exception $fingerprintErr) {
-                    // Log other errors but don't fail the employee creation
-                    error_log("Unexpected error copying fingerprint template for employee {$data['employee_id']}: " . $fingerprintErr->getMessage());
-                }
-                
                 return [
                     "success" => true,
                     "status"  => 201,
@@ -85,6 +68,13 @@ class EmployeeController {
             ];
 
         } catch (PDOException $err) {
+            if ($this->isMissingEmployeesTable($err)) {
+                return [
+                    "success" => false,
+                    "status"  => 501,
+                    "error"   => "Local employees table is not available. Employees are managed by profiling-system."
+                ];
+            }
             return [
                 "success" => false,
                 "status"  => 400,
@@ -202,6 +192,13 @@ class EmployeeController {
             ];
 
         } catch (PDOException $err) {
+            if ($this->isMissingEmployeesTable($err)) {
+                return [
+                    "success" => false,
+                    "status"  => 501,
+                    "error"   => "Local employees table is not available. Employees are managed by profiling-system."
+                ];
+            }
             return [
                 "success" => false,
                 "status"  => 400,
@@ -227,87 +224,12 @@ class EmployeeController {
      */
     public function delete(string $employeeId)
     {
-        $db = (new Database())->connect();
-        
-        try {
-            // Check if employee exists
-            $employee = $this->employeeRepository->getEmployeeById($employeeId);
-            if (!$employee) {
-                return [
-                    "success" => false,
-                    "status"  => 404,
-                    "error"   => "Employee not found"
-                ];
-            }
-
-            // Start transaction
-            $db->beginTransaction();
-
-            // 1. Archive employee data to archive_employees table
-            $archiveData = [
-                'employee_id' => $employee['employee_id'],
-                'resident_id' => $employee['resident_id'],
-                'position_id' => $employee['position_id'],
-                'department_id' => $employee['department_id'] ?? null,
-                'hired_date' => $employee['hired_date'],
-                'created_at' => $employee['created_at'] ?? date('Y-m-d H:i:s'),
-                'updated_at' => $employee['updated_at'] ?? date('Y-m-d H:i:s'),
-                'archived_at' => date('Y-m-d H:i:s')
-            ];
-
-            // Insert into archive_employees
-            $archiveColumns = implode(', ', array_keys($archiveData));
-            $archivePlaceholders = ':' . implode(', :', array_keys($archiveData));
-            $archiveSql = "INSERT INTO archive_employees ({$archiveColumns}) VALUES ({$archivePlaceholders})";
-            $archiveStmt = $db->prepare($archiveSql);
-            $archiveStmt->execute($archiveData);
-
-            // 2. Delete related employee_activity records (required due to FK constraints)
-            $activityDeleteSql = "DELETE FROM employee_activity WHERE employee_id = :employee_id OR created_by = :employee_id";
-            $activityDeleteStmt = $db->prepare($activityDeleteSql);
-            $activityDeleteStmt->execute(['employee_id' => $employeeId]);
-
-            // 3. Delete fingerprint records from fingerprints table (employee-specific)
-            // Note: resident_fingerprints remain untouched as they belong to the resident
-            $fingerprintsDeleteSql = "DELETE FROM fingerprints WHERE employee_id = :employee_id";
-            $fingerprintsDeleteStmt = $db->prepare($fingerprintsDeleteSql);
-            $fingerprintsDeleteStmt->execute(['employee_id' => $employeeId]);
-
-            // 4. Delete from employees table
-            $deleteSql = "DELETE FROM employees WHERE employee_id = :employee_id";
-            $deleteStmt = $db->prepare($deleteSql);
-            $deleteStmt->execute(['employee_id' => $employeeId]);
-
-            // Commit transaction
-            $db->commit();
-
-            return [
-                "success" => true,
-                "status"  => 200,
-                "message" => "Employee successfully archived and deleted."
-            ];
-
-        } catch (PDOException $err) {
-            // Rollback transaction on error
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            return [
-                "success" => false,
-                "status"  => 400,
-                "error"   => $this->getDeleteErrorMessage($err)
-            ];
-        } catch (Exception $err) {
-            // Rollback transaction on error
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            return [
-                "success" => false,
-                "status"  => 500,
-                "error"   => "An unexpected error occurred. Please try again or contact support if the problem persists."
-            ];
-        }
+        // Employees are managed in profiling-system (barangay_official). attendance-system is read-only.
+        return [
+            "success" => false,
+            "status"  => 410,
+            "error"   => "Employee delete is disabled. Manage employees in the profiling-system database."
+        ];
     }
 
     /**

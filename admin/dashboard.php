@@ -8,23 +8,33 @@ $getdata = (new AttendanceController())->index();
 
 // Get total counts for residents, employees, and visitors
 $db = (new Database())->connect();
-$residentRepository = new ResidentRepository($db);
-$employeeRepository = new EmployeeRepository($db);
-$verificationLogRepository = new VerificationLogRepository($db);
 
-// Get accurate total residents count using direct SQL query
+// Profiling system database (source of truth for residents/employees)
+$profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
+
+// Get accurate total residents count from profiling-system database
 try {
-    $stmt = $db->prepare("SELECT COUNT(*) as total FROM residents");
+    $stmt = $db->prepare("SELECT COUNT(*) as total FROM `{$profilingDbName}`.`residents`");
     $stmt->execute();
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $totalResidents = (int) ($result['total'] ?? 0);
 } catch (Exception $e) {
-    // Fallback to repository count if direct query fails
-    $totalResidents = $residentRepository->count();
+    // Fallback value if query fails (do not query local attendance-system tables)
+    $totalResidents = 0;
     error_log("Error fetching resident count: " . $e->getMessage());
 }
 
-$totalEmployees = $employeeRepository->getEmployeeCount();
+// Get accurate total employees count from profiling-system database (barangay_official)
+try {
+    $stmt = $db->prepare("SELECT COUNT(*) as total FROM `{$profilingDbName}`.`barangay_official`");
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalEmployees = (int) ($result['total'] ?? 0);
+} catch (Exception $e) {
+    // Fallback value if query fails (do not query local attendance-system tables)
+    $totalEmployees = 0;
+    error_log("Error fetching employee count: " . $e->getMessage());
+}
 
 // Get visitor counts (default: this month to match default filter, will be updated via JavaScript/AJAX)
 $now = new DateTime();

@@ -119,6 +119,11 @@ if (!defined("DB_HOST")) {
     // define("DB_PASS", "");
 }
 
+// External profiling system database (read-only for attendance-system)
+if (!defined("PROFILING_DB_NAME")) {
+    define("PROFILING_DB_NAME", "profiling-system");
+}
+
 // Application Settings
 define("APP_NAME", "Attendance System");
 define("APP_VERSION", "1.0.0");

@@ -34,7 +34,7 @@ export class StatusUpdater {
      */
     updateReady() {
         if (this.statusTitle) this.statusTitle.textContent = 'READY TO SCAN';
-        if (this.statusMessage) this.statusMessage.textContent = 'Scan your face to Clock In or Clock Out.';
+        if (this.statusMessage) this.statusMessage.textContent = 'Scan your face to log your visit (Logbook).';
         if (this.statusIcon) {
             this.statusIcon.classList.remove('text-yellow-500', 'text-red-500', 'animate-pulse');
             this.statusIcon.classList.add('text-green-500');

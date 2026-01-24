@@ -13,7 +13,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 // Get date range parameters (default to current month)
 $fromDate = isset($_GET['from']) ? trim($_GET['from']) : date('Y-m-01');
 $toDate = isset($_GET['to']) ? trim($_GET['to']) : date('Y-m-t');
-$reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-department';
+$reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-position';
 
 ?>
 
@@ -22,7 +22,7 @@ $reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-departmen
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operational Reports</title>
+    <title>Attendance Reports</title>
     <link rel="stylesheet" href="../utils/styles/global.css">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,7 +49,7 @@ $reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-departmen
             <header class="mb-6">
                 <div class="flex justify-between items-center mb-1">
                     <div>
-                        <h1 class="text-2xl font-semibold text-gray-800">Operational Reports</h1>
+                        <h1 class="text-2xl font-semibold text-gray-800">Attendance Reports</h1>
                         <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?></p>
                     </div>
                     <div>
@@ -72,9 +72,10 @@ $reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-departmen
                 <div class="w-full md:w-1/3">
                     <label for="reportType" class="block text-sm font-medium text-gray-700 mb-1">Select Report Type</label>
                     <select id="reportType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                        <option value="attendance-department" <?= $reportType === 'attendance-department' ? 'selected' : '' ?>>Attendance - Total Hours by Department</option>
-                        <option value="attendance-count" <?= $reportType === 'attendance-count' ? 'selected' : '' ?>>Attendance - Count by Department</option>
-                        <option value="employee-department" <?= $reportType === 'employee-department' ? 'selected' : '' ?>>Employee - Department Distribution</option>
+                        <option value="attendance-position" <?= $reportType === 'attendance-position' ? 'selected' : '' ?>>Attendance – Total Hours by Position</option>
+                        <option value="attendance-chairmanship" <?= $reportType === 'attendance-chairmanship' ? 'selected' : '' ?>>Attendance – Total Hours by Chairmanship</option>
+                        <option value="attendance-employee" <?= $reportType === 'attendance-employee' ? 'selected' : '' ?>>Attendance – Total Hours by Employee</option>
+                        <option value="attendance-daily" <?= $reportType === 'attendance-daily' ? 'selected' : '' ?>>Attendance – Daily Attendance Summary</option>
                     </select>
                 </div>
 

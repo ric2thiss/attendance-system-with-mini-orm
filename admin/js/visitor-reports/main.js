@@ -14,7 +14,6 @@ const API_ENDPOINT = `${getBaseUrl()}/api/reports/visitor-reports.php`;
 
 // Get DOM elements
 const reportTypeSelect = document.getElementById('reportType');
-const monthFilter = document.getElementById('monthFilter');
 const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
 const runReportBtn = document.getElementById('runReportBtn');
@@ -139,8 +138,8 @@ const reportConfigs = {
             datasets: [{
                 label: 'Visitors',
                 data: data.map(d => d.count),
-                backgroundColor: [colors.primary, colors.pink, colors.gray],
-                borderColor: [colors.primary + 'CC', colors.pink + 'CC', colors.gray + 'CC'],
+                backgroundColor: colors.primary + '80',
+                borderColor: colors.primary,
                 borderWidth: 1
             }]
         }),
@@ -351,20 +350,6 @@ function renderTable(data, config) {
 }
 
 /**
- * Update date range based on month filter
- */
-function updateDateRangeFromMonth() {
-    if (monthFilter.value) {
-        const [year, month] = monthFilter.value.split('-');
-        const firstDay = new Date(year, month - 1, 1);
-        const lastDay = new Date(year, month, 0);
-        
-        startDateInput.value = firstDay.toISOString().split('T')[0];
-        endDateInput.value = lastDay.toISOString().split('T')[0];
-    }
-}
-
-/**
  * Update report display
  */
 async function updateReport() {
@@ -485,8 +470,8 @@ if (exportReportBtn) {
     exportReportBtn.addEventListener('click', exportReport);
 }
 
-if (monthFilter) {
-    monthFilter.addEventListener('change', updateDateRangeFromMonth);
+if (reportTypeSelect) {
+    reportTypeSelect.addEventListener('change', updateReport);
 }
 
 // Auto-run report on page load if dates are set

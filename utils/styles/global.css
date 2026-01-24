@@ -5,12 +5,21 @@ body {
 }
 /* Custom dark blue for the sidebar */
 .sidebar-bg {
-    background-color: #172B4D; /* A deep navy blue */
+    background-color: #1e40af; /* Blue-800 - more vibrant dark blue matching the image */
 }
-/* Active link background color */
-.active-link {
+/* Active link and hover state styling */
+.nav-link {
+    border-left: 4px solid transparent;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+.nav-link:hover, .active-link {
     background-color: rgba(255, 255, 255, 0.1);
-    border-left: 4px solid #007bff; /* Light blue border highlight */
+    border-left: 4px solid #facc15; /* Yellow-400 indicator from the image */
+    color: #ffffff !important;
+}
+.active-link {
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 /* Custom Modal Styling */
 .modal {

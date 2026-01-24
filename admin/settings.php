@@ -394,6 +394,9 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             loadSettings();
         });
     </script>
+    
+    <!-- App Name Updater -->
+    <script src="js/shared/appName.js"></script>
 
 </body>
 </html>

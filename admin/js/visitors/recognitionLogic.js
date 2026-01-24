@@ -11,6 +11,14 @@ export class RecognitionLogic {
         this.detectionIntervalId = null;
         this.loggedToday = new Set(); // To prevent logging the same person multiple times per session
         this.onRecognizedCallback = null;
+
+        this.paused = false;
+        this._playListenerAttached = false;
+        this._video = null;
+        this._overlay = null;
+        this._ctx = null;
+        this._displaySize = null;
+        this._faceapi = null;
     }
 
     /**
@@ -30,6 +38,7 @@ export class RecognitionLogic {
             console.error('Face-API.js library not loaded');
             return;
         }
+        this._faceapi = faceapi;
 
         const video = this.webcamHandler.getVideo();
         const overlay = this.webcamHandler.getOverlay();
@@ -39,61 +48,89 @@ export class RecognitionLogic {
             return;
         }
 
-        const ctx = overlay.getContext('2d');
+        this._video = video;
+        this._overlay = overlay;
+        this._ctx = overlay.getContext('2d');
 
-        video.addEventListener('play', () => {
-            const displaySize = { width: video.clientWidth, height: video.clientHeight };
-            faceapi.matchDimensions(overlay, displaySize);
+        const setupAndRun = () => {
+            if (!this._video || !this._overlay || !this._faceapi) return;
+            this._displaySize = { width: this._video.clientWidth, height: this._video.clientHeight };
+            this._faceapi.matchDimensions(this._overlay, this._displaySize);
+            this._startInterval();
+        };
 
-            this.detectionIntervalId = setInterval(async () => {
-                const faceMatcher = this.faceRecognition.getFaceMatcher();
-                if (!faceMatcher) return;
+        if (!this._playListenerAttached) {
+            video.addEventListener('play', setupAndRun);
+            this._playListenerAttached = true;
+        }
 
-                const detections = await faceapi
-                    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
-                        inputSize: 416,
-                        scoreThreshold: 0.6
-                    }))
-                    .withFaceLandmarks()
-                    .withFaceDescriptors();
+        // If video is already playing, start immediately.
+        if (!video.paused && !video.ended && video.readyState >= 2) {
+            setupAndRun();
+        }
+    }
 
-                // Clear canvas
-                ctx.clearRect(0, 0, overlay.width, overlay.height);
+    _startInterval() {
+        if (this.detectionIntervalId) return;
+        if (this.paused) return;
+        if (!this._faceapi || !this._video || !this._overlay || !this._ctx || !this._displaySize) return;
 
-                // Resize detections to match video dimensions
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+        this.detectionIntervalId = setInterval(async () => {
+            if (this.paused) return;
 
-                if (resizedDetections.length && faceMatcher) {
-                    const results = resizedDetections.map(d =>
-                        faceMatcher.findBestMatch(d.descriptor)
-                    );
+            const faceMatcher = this.faceRecognition.getFaceMatcher();
+            if (!faceMatcher) return;
 
-                    results.forEach((result, i) => {
-                        const box = resizedDetections[i].detection.box;
-                        const label = result.label;
-                        const distance = result.distance.toFixed(2);
+            const faceapi = this._faceapi;
+            const video = this._video;
+            const overlay = this._overlay;
+            const ctx = this._ctx;
+            const displaySize = this._displaySize;
 
-                        // Draw bounding box
-                        ctx.strokeStyle = label === "unknown" ? "red" : "lime";
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(box.x, box.y, box.width, box.height);
+            const detections = await faceapi
+                .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
+                    inputSize: 416,
+                    scoreThreshold: 0.6
+                }))
+                .withFaceLandmarks()
+                .withFaceDescriptors();
 
-                        // Draw label
-                        ctx.fillStyle = label === "unknown" ? "red" : "lime";
-                        ctx.font = "16px Inter, sans-serif";
-                        ctx.fillText(`${label} (${distance})`, box.x, box.y - 8);
+            // Clear canvas
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-                        if (label !== "unknown") {
-                            const person = this.labeledDescriptors.find(p => p.name === label);
-                            if (person && this.onRecognizedCallback) {
-                                // Pass person data to callback
-                                this.onRecognizedCallback(person.id, person.name, person);
-                            }
+            // Resize detections to match video dimensions
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+
+            if (resizedDetections.length && faceMatcher) {
+                const results = resizedDetections.map(d =>
+                    faceMatcher.findBestMatch(d.descriptor)
+                );
+
+                results.forEach((result, i) => {
+                    const box = resizedDetections[i].detection.box;
+                    const label = result.label;
+                    const distance = result.distance.toFixed(2);
+
+                    // Draw bounding box
+                    ctx.strokeStyle = label === "unknown" ? "red" : "lime";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+                    // Draw label
+                    ctx.fillStyle = label === "unknown" ? "red" : "lime";
+                    ctx.font = "16px Inter, sans-serif";
+                    ctx.fillText(`${label} (${distance})`, box.x, box.y - 8);
+
+                    if (label !== "unknown") {
+                        const person = this.labeledDescriptors.find(p => p.name === label);
+                        if (person && this.onRecognizedCallback) {
+                            // Pass person data to callback
+                            this.onRecognizedCallback(person.id, person.name, person);
                         }
-                    });
-                }
-            }, this.detectionInterval);
-        });
+                    }
+                });
+            }
+        }, this.detectionInterval);
     }
 
     /**
@@ -104,6 +141,25 @@ export class RecognitionLogic {
             clearInterval(this.detectionIntervalId);
             this.detectionIntervalId = null;
         }
+    }
+
+    /**
+     * Pause face detection loop (used while a modal/transaction is active)
+     */
+    pause() {
+        this.paused = true;
+        this.stop();
+        if (this._ctx && this._overlay) {
+            this._ctx.clearRect(0, 0, this._overlay.width, this._overlay.height);
+        }
+    }
+
+    /**
+     * Resume face detection loop
+     */
+    resume() {
+        this.paused = false;
+        this._startInterval();
     }
 
     /**

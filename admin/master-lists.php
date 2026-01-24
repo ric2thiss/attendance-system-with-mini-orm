@@ -95,7 +95,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <div class="flex justify-between items-center mb-1">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800">Master Lists</h1>
-                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage civil status, departments, and positions.</p>
+                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?> - Manage attendance windows.</p>
                     </div>
                 </div>
                 <?php Breadcrumb([
@@ -118,31 +118,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 <!-- Tab Navigation -->
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="flex space-x-8" aria-label="Tabs">
-                        <button type="button" class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="civil-status" id="tab-civil-status">
-                            <span class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Civil Status
-                            </span>
-                        </button>
-                        <button type="button" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="departments" id="tab-departments">
-                            <span class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                </svg>
-                                Departments
-                            </span>
-                        </button>
-                        <button type="button" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="positions" id="tab-positions">
-                            <span class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                </svg>
-                                Positions
-                            </span>
-                        </button>
-                        <button type="button" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="attendance-windows" id="tab-attendance-windows">
+                        <button type="button" class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="attendance-windows" id="tab-attendance-windows">
                             <span class="flex items-center">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -153,83 +129,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                     </nav>
                 </div>
 
-                <!-- Tab Content: Civil Status -->
-                <div class="tab-content" id="content-civil-status">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Civil Status</h2>
-                        <button onclick="openModal('civil-status', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Add Civil Status
-                        </button>
-                    </div>
-                    <div class="table-container rounded-lg border border-gray-200">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="table-header">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status Name</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="civil-status-table" class="bg-white divide-y divide-gray-200">
-                                <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Tab Content: Departments -->
-                <div class="tab-content hidden" id="content-departments">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Departments</h2>
-                        <button onclick="openModal('departments', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Add Department
-                        </button>
-                    </div>
-                    <div class="table-container rounded-lg border border-gray-200">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="table-header">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Department Name</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="departments-table" class="bg-white divide-y divide-gray-200">
-                                <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Tab Content: Positions -->
-                <div class="tab-content hidden" id="content-positions">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Positions</h2>
-                        <button onclick="openModal('positions', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Add Position
-                        </button>
-                    </div>
-                    <div class="table-container rounded-lg border border-gray-200">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="table-header">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Position Name</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="positions-table" class="bg-white divide-y divide-gray-200">
-                                <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <!-- Tab Content: Attendance Windows -->
-                <div class="tab-content hidden" id="content-attendance-windows">
+                <div class="tab-content" id="content-attendance-windows">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-800">Attendance Windows</h2>
                         <button onclick="openModal('attendance-windows', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
@@ -274,7 +175,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                     <input type="hidden" id="modal-id" name="id">
                     <input type="hidden" id="modal-type" name="type">
                     <div id="modal-form-content">
-                        <!-- Default form content (for civil-status, departments, positions) -->
+                        <!-- Default form content -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2" id="modal-label">Name</label>
                             <input type="text" id="modal-input" name="name" required
@@ -315,31 +216,10 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 
     <script>
         const API_BASE = '../api/master-lists/';
-        let currentTab = 'civil-status';
+        let currentTab = 'attendance-windows';
         let deleteItem = { type: null, id: null };
 
         const tabConfig = {
-            'civil-status': {
-                endpoint: 'civil-status.php',
-                nameField: 'status_name',
-                label: 'Status Name',
-                title: 'Civil Status',
-                isSimple: true
-            },
-            'departments': {
-                endpoint: 'departments.php',
-                nameField: 'department_name',
-                label: 'Department Name',
-                title: 'Department',
-                isSimple: true
-            },
-            'positions': {
-                endpoint: 'positions.php',
-                nameField: 'position_name',
-                label: 'Position Name',
-                title: 'Position',
-                isSimple: true
-            },
             'attendance-windows': {
                 endpoint: 'attendance-windows.php',
                 nameField: 'label',
@@ -422,43 +302,13 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                                 </tr>
                             `;
                         }).join('');
-                    } else {
-                        // Default table rendering for simple entities
-                        tableBody.innerHTML = items.map(item => {
-                            const id = isObject(item) ? item[`${type === 'civil-status' ? 'civil_status_id' : type === 'departments' ? 'department_id' : 'position_id'}`] : item.id;
-                            const name = isObject(item) ? item[config.nameField] : item.name;
-                            return `
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${id}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(name)}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        <div class="flex items-center justify-center space-x-2">
-                                            <button onclick="openModal('${type}', ${id})" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" title="Edit">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                                </svg>
-                                                Edit
-                                            </button>
-                                            <button onclick="openDeleteModal('${type}', ${id}, '${escapeHtml(name)}')" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" title="Delete">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
                     }
                 } else {
-                    const colspan = type === 'attendance-windows' ? '5' : '3';
-                    tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>`;
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                const colspan = type === 'attendance-windows' ? '5' : '3';
-                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>`;
             }
         }
 
@@ -708,7 +558,10 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         }
 
         // Load initial data
-        loadData('civil-status');
+        loadData('attendance-windows');
     </script>
+    
+    <!-- App Name Updater -->
+    <script src="js/shared/appName.js"></script>
 </body>
 </html>

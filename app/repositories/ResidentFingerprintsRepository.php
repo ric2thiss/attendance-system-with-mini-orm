@@ -7,9 +7,14 @@ class ResidentFingerprintsRepository extends BaseRepository {
         return ResidentFingerprints::class;
     }
 
+    public function existsByResidentId(int $residentId): bool {
+        $fingerprint = $this->findBy('resident_id', $residentId);
+        return $fingerprint !== null;
+    }
+
     /**
-     * Get all resident fingerprints with limited fields
-     * 
+     * Get all resident fingerprints with limited fields (for admin/debug use).
+     *
      * @return array
      */
     public function getAllLimited(): array {
@@ -17,25 +22,5 @@ class ResidentFingerprintsRepository extends BaseRepository {
             ->select("resident_id", "template")
             ->get();
     }
-
-    /**
-     * Check if resident fingerprint exists
-     * 
-     * @param int $residentId
-     * @return bool
-     */
-    public function existsByResidentId(int $residentId): bool {
-        $fingerprint = $this->findBy('resident_id', $residentId);
-        return $fingerprint !== null;
-    }
-
-    /**
-     * Get fingerprint by resident ID
-     * 
-     * @param int $residentId
-     * @return object|null
-     */
-    public function findByResidentId(int $residentId) {
-        return $this->findBy('resident_id', $residentId);
-    }
 }
+

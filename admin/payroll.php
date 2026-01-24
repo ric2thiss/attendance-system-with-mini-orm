@@ -61,22 +61,9 @@ $activeNav = $activeNavMap[$action] ?? 'Payroll Dashboard';
     <title>Payroll Management</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../utils/styles/global.css">
     <!-- Use Inter font family and custom styles from the dashboard -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc; /* Light background for the main content area */
-        }
-        /* Custom dark blue for the sidebar */
-        .sidebar-bg {
-            background-color: #172B4D; /* A deep navy blue */
-        }
-        /* Active link background color */
-        .active-link {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #007bff; /* Light blue border highlight */
-        }
         /* Custom Modal Styling */
         .modal {
             transition: opacity 0.25s ease-in-out;

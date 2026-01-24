@@ -4,6 +4,17 @@
  */
 
 export function initTableRenderer() {
+    let currentAttendanceData = [];
+    let currentPage = 1;
+    let pageSize = 10;
+
+    const paginationEl = document.getElementById('attendance-pagination');
+    const rangeEl = document.getElementById('attendance-range');
+    const pageInfoEl = document.getElementById('attendance-page-info');
+    const prevBtn = document.getElementById('attendance-prev');
+    const nextBtn = document.getElementById('attendance-next');
+    const pageSizeSelect = document.getElementById('attendance-page-size');
+
     /**
      * Format time from timestamp
      * @param {string|null} timestamp 
@@ -62,8 +73,11 @@ export function initTableRenderer() {
      */
     function render(attendanceData) {
         const tbody = document.getElementById('attendance-table-body');
+
+        currentAttendanceData = Array.isArray(attendanceData) ? attendanceData : [];
+        currentPage = 1;
         
-        if (!attendanceData || attendanceData.length === 0) {
+        if (!currentAttendanceData || currentAttendanceData.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="px-3 py-8 text-center text-gray-500">
@@ -71,10 +85,27 @@ export function initTableRenderer() {
                     </td>
                 </tr>
             `;
+
+            if (paginationEl) {
+                paginationEl.classList.add('hidden');
+            }
             return;
         }
 
-        tbody.innerHTML = attendanceData.map(day => {
+        if (pageSizeSelect) {
+            const parsed = parseInt(pageSizeSelect.value, 10);
+            pageSize = Number.isFinite(parsed) && parsed > 0 ? parsed : pageSize;
+        }
+
+        const totalRecords = currentAttendanceData.length;
+        const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+        currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = Math.min(startIdx + pageSize, totalRecords);
+        const pageSlice = currentAttendanceData.slice(startIdx, endIdx);
+
+        tbody.innerHTML = pageSlice.map(day => {
             const morningIn = day.morning_in ? formatTime(day.morning_in.timestamp) : '-';
             const morningOut = day.morning_out ? formatTime(day.morning_out.timestamp) : '-';
             const afternoonIn = day.afternoon_in ? formatTime(day.afternoon_in.timestamp) : '-';
@@ -99,6 +130,46 @@ export function initTableRenderer() {
                 </tr>
             `;
         }).join('');
+
+        // Pagination UI
+        if (paginationEl) {
+            paginationEl.classList.remove('hidden');
+        }
+        if (rangeEl) {
+            rangeEl.textContent = `Showing ${startIdx + 1}\u2013${endIdx} of ${totalRecords}`;
+        }
+        if (pageInfoEl) {
+            pageInfoEl.textContent = `Page ${currentPage} / ${totalPages}`;
+        }
+        if (prevBtn) {
+            prevBtn.disabled = currentPage <= 1;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = currentPage >= totalPages;
+        }
+    }
+
+    // Wire pagination controls once
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            currentPage = Math.max(1, currentPage - 1);
+            render(currentAttendanceData);
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(currentAttendanceData.length / pageSize));
+            currentPage = Math.min(totalPages, currentPage + 1);
+            render(currentAttendanceData);
+        });
+    }
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', () => {
+            const parsed = parseInt(pageSizeSelect.value, 10);
+            pageSize = Number.isFinite(parsed) && parsed > 0 ? parsed : pageSize;
+            currentPage = 1;
+            render(currentAttendanceData);
+        });
     }
 
     return {

@@ -193,6 +193,7 @@ export class NonResidentForm {
         // Show modal
         this.formModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        document.dispatchEvent(new CustomEvent('visitor:modal-opened', { detail: { id: 'non-resident-modal' } }));
     }
 
     /**
@@ -202,6 +203,7 @@ export class NonResidentForm {
         if (this.formModal) {
             this.formModal.classList.add('hidden');
             document.body.style.overflow = '';
+            document.dispatchEvent(new CustomEvent('visitor:modal-closed', { detail: { id: 'non-resident-modal' } }));
         }
     }
 

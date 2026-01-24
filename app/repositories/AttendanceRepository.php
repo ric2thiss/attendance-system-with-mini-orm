@@ -75,19 +75,18 @@ class AttendanceRepository extends BaseRepository {
         $offset = ($page - 1) * $perPage;
 
         $baseQuery = Attendance::query()->table("attendances AS a")
-            ->select("a.id AS attendance_id, a.employee_id, CONCAT(r.first_name, ' ', r.last_name) AS full_name, a.timestamp AS attendance_time, a.window, COALESCE(aw.label, a.window) AS window_label")
-            ->join("employees AS e", "a.employee_id", "=", " e.employee_id")
-            ->join("residents AS r", "e.resident_id", "=", "r.resident_id")
+            ->select("a.id AS attendance_id, a.employee_id, CONCAT(bo.first_name, ' ', bo.surname) AS full_name, a.timestamp AS attendance_time, a.window, COALESCE(aw.label, a.window) AS window_label")
+            // Employees are sourced from profiling-system.barangay_official (read-only)
+            ->leftJoin("`" . PROFILING_DB_NAME . "`.`barangay_official` AS bo", "a.employee_id", "=", "bo.id")
             ->leftJoin("attendance_windows AS aw", "LOWER(TRIM(a.window))", "=", "LOWER(TRIM(aw.label))");
 
         $countQuery = Attendance::query()->table("attendances AS a")
             ->select("COUNT(*) as total")
-            ->join("employees AS e", "a.employee_id", "=", " e.employee_id")
-            ->join("residents AS r", "e.resident_id", "=", "r.resident_id");
+            ->leftJoin("`" . PROFILING_DB_NAME . "`.`barangay_official` AS bo", "a.employee_id", "=", "bo.id");
 
         if (!empty($searchQuery)) {
-            $baseQuery->whereRaw("(CONCAT(r.first_name, ' ', r.last_name) LIKE ? OR a.employee_id LIKE ?)", ["%{$searchQuery}%", "%{$searchQuery}%"]);
-            $countQuery->whereRaw("(CONCAT(r.first_name, ' ', r.last_name) LIKE ? OR a.employee_id LIKE ?)", ["%{$searchQuery}%", "%{$searchQuery}%"]);
+            $baseQuery->whereRaw("(CONCAT(bo.first_name, ' ', bo.surname) LIKE ? OR a.employee_id LIKE ?)", ["%{$searchQuery}%", "%{$searchQuery}%"]);
+            $countQuery->whereRaw("(CONCAT(bo.first_name, ' ', bo.surname) LIKE ? OR a.employee_id LIKE ?)", ["%{$searchQuery}%", "%{$searchQuery}%"]);
         }
 
         // Date filtering

@@ -4,6 +4,12 @@ require_once __DIR__ . '/../../auth/helpers.php';
 requireAuth();
 
 header('Content-Type: application/json');
+http_response_code(410);
+echo json_encode([
+    "success" => false,
+    "message" => "Positions are managed in profiling-system. This endpoint is disabled because attendance-system.position was removed."
+]);
+exit;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $positionController = new PositionController();

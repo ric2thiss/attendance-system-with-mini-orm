@@ -30,13 +30,34 @@ let bookingModal;
 let nonResidentForm;
 let faceRecognitionTimeout = null;
 const FACE_RECOGNITION_TIMEOUT = 5000; // 5 seconds
+let recognitionLocked = false; // lock recognition while a modal/transaction is active
+
+function isAnyModalOpen() {
+    const booking = document.getElementById('booking-modal');
+    const nonResident = document.getElementById('non-resident-modal');
+    const bookingOpen = booking && !booking.classList.contains('hidden');
+    const nonResidentOpen = nonResident && !nonResident.classList.contains('hidden');
+    return Boolean(bookingOpen || nonResidentOpen);
+}
 
 /**
  * Handle recognized face
  */
 async function handleRecognizedFace(id, name, residentData) {
+    if (recognitionLocked) {
+        return;
+    }
+    recognitionLocked = true;
+    if (recognitionLogic) {
+        recognitionLogic.pause();
+    }
+
     // Check if person is already logged
     if (recognitionLogic.isLoggedToday(id)) {
+        recognitionLocked = false;
+        if (recognitionLogic) {
+            recognitionLogic.resume();
+        }
         return; // Skip if already logged
     }
 
@@ -75,6 +96,17 @@ async function handleRecognizedFace(id, name, residentData) {
             });
         } catch (serviceError) {
             console.error("Error fetching services:", serviceError);
+        }
+    } finally {
+        // If no modal is shown (e.g., error paths), unlock and resume scanning.
+        if (!isAnyModalOpen()) {
+            recognitionLocked = false;
+            if (recognitionLogic) {
+                recognitionLogic.resume();
+            }
+            if (statusUpdater) {
+                statusUpdater.resetToReady();
+            }
         }
     }
 }
@@ -177,6 +209,11 @@ function tryAgain() {
     if (faceRecognitionTimeout) {
         clearTimeout(faceRecognitionTimeout);
         faceRecognitionTimeout = null;
+    }
+
+    recognitionLocked = false;
+    if (recognitionLogic) {
+        recognitionLogic.resume();
     }
     
     // Restart timeout for non-resident form (if no face detected after 5 seconds)
@@ -452,6 +489,23 @@ function init() {
 
     // Start face recognition system (but don't start camera automatically)
     initializeFaceRecognition();
+
+    // Pause/resume scanning when modals open/close
+    document.addEventListener('visitor:modal-opened', () => {
+        recognitionLocked = true;
+        if (recognitionLogic) {
+            recognitionLogic.pause();
+        }
+    });
+    document.addEventListener('visitor:modal-closed', () => {
+        recognitionLocked = false;
+        if (recognitionLogic) {
+            recognitionLogic.resume();
+        }
+        if (statusUpdater) {
+            statusUpdater.resetToReady();
+        }
+    });
 }
 
 // Initialize when DOM is ready

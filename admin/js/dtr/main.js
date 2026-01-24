@@ -42,6 +42,26 @@ function initDTR() {
     const viewBtn = document.getElementById('view-dtr-btn');
     const printBtn = document.getElementById('print-dtr-btn');
 
+    if (!loadBtn || !employeeSelect || !fromDate || !toDate || !viewBtn || !printBtn) {
+        console.error('DTR init: missing required DOM elements');
+        return;
+    }
+
+    function resetLoadedState() {
+        currentData = null;
+        viewBtn.disabled = true;
+        printBtn.disabled = true;
+        document.getElementById('employee-info-card')?.classList.add('hidden');
+        document.getElementById('charts-section')?.classList.add('hidden');
+        document.getElementById('attendance-table-section')?.classList.add('hidden');
+        document.getElementById('anomalies-section')?.classList.add('hidden');
+    }
+
+    // If user changes employee or date filters, require re-load
+    employeeSelect.addEventListener('change', resetLoadedState);
+    fromDate.addEventListener('change', resetLoadedState);
+    toDate.addEventListener('change', resetLoadedState);
+
     loadBtn.addEventListener('click', async () => {
         const employeeId = employeeSelect.value;
         const from = fromDate.value;
@@ -49,6 +69,11 @@ function initDTR() {
 
         if (!employeeId) {
             alert('Please select an employee');
+            return;
+        }
+
+        if (from && to && from > to) {
+            alert('Invalid date range: "From Date" must be earlier than or equal to "To Date".');
             return;
         }
 
@@ -65,7 +90,7 @@ function initDTR() {
             const employeeIdDisplay = document.getElementById('employee-id-display');
             
             employeeInfoCard.classList.remove('hidden');
-            employeeNameDisplay.textContent = data.employee_name;
+            employeeNameDisplay.textContent = data.employee_name || '(Unknown name)';
             employeeIdDisplay.textContent = `Employee ID: ${data.employee_id}`;
 
             // Render table
@@ -83,15 +108,17 @@ function initDTR() {
             document.getElementById('attendance-table-section').classList.remove('hidden');
             document.getElementById('anomalies-section').classList.remove('hidden');
 
-            // Enable view and print buttons
-            viewBtn.disabled = false;
-            printBtn.disabled = false;
+            // Enable view and print only when there is data to show/print
+            const hasRows = Array.isArray(data.attendance_data) && data.attendance_data.length > 0;
+            viewBtn.disabled = !hasRows;
+            printBtn.disabled = !hasRows;
             viewDTR.setData(data, from, to);
             printDTR.setData(data, from, to);
 
         } catch (error) {
             console.error('Error loading attendance data:', error);
             alert('Failed to load attendance data: ' + (error.message || 'Unknown error'));
+            resetLoadedState();
         } finally {
             loadBtn.disabled = false;
             loadBtn.textContent = 'Load Attendance Data';

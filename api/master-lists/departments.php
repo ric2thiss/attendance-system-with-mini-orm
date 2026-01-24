@@ -4,6 +4,12 @@ require_once __DIR__ . '/../../auth/helpers.php';
 requireAuth();
 
 header('Content-Type: application/json');
+http_response_code(410);
+echo json_encode([
+    "success" => false,
+    "message" => "Departments are managed in profiling-system. This endpoint is disabled because attendance-system.departments was removed."
+]);
+exit;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $departmentController = new DepartmentController();

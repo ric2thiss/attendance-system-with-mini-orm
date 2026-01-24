@@ -311,6 +311,7 @@ export class BookingModal {
         if (this.modal) {
             this.modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            document.dispatchEvent(new CustomEvent('visitor:modal-opened', { detail: { id: 'booking-modal' } }));
         }
     }
 
@@ -321,6 +322,7 @@ export class BookingModal {
         if (this.modal) {
             this.modal.classList.add('hidden');
             document.body.style.overflow = ''; // Restore scrolling
+            document.dispatchEvent(new CustomEvent('visitor:modal-closed', { detail: { id: 'booking-modal' } }));
         }
     }
 

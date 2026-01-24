@@ -44,31 +44,10 @@ class ResidentController
      */
     public function store($data, $addressData = [], $statusData = [], $biometricData = null)
     {
-        // Validate required fields
-        if (empty($data['first_name']) || empty($data['last_name']) || empty($data['gender']) || empty($data['birthdate'])) {
-            return [
-                "success" => false,
-                "message" => "Please fill in all required fields (First Name, Last Name, Gender, Birthdate)"
-            ];
-        }
-
-        // Check for duplicate phil_sys_number if provided
-        if (!empty($data['phil_sys_number']) && $this->residentRepository->existsByPhilSysNumber($data['phil_sys_number'])) {
-            return [
-                "success" => false,
-                "message" => "PhilSys Number already exists. Please use a different number."
-            ];
-        }
-
-        // Validate address required fields if address data is provided
-        if (!empty($addressData) && (empty($addressData['barangay']) || empty($addressData['municipality_city']) || empty($addressData['province']))) {
-            return [
-                "success" => false,
-                "message" => "Please fill in all required address fields (Barangay, Municipality/City, Province)"
-            ];
-        }
-
-        return $this->residentRepository->createWithRelations($data, $addressData, $statusData, $biometricData);
+        return [
+            "success" => false,
+            "message" => "Residents are managed by profiling-system. Create residents there."
+        ];
     }
 
     /**
@@ -83,35 +62,17 @@ class ResidentController
      */
     public function update($residentId, $data, $addressData = [], $statusData = [], $biometricData = null)
     {
-        // Validate required fields
-        if (empty($data['first_name']) || empty($data['last_name']) || empty($data['gender']) || empty($data['birthdate'])) {
-            return [
-                "success" => false,
-                "message" => "Please fill in all required fields (First Name, Last Name, Gender, Birthdate)"
-            ];
-        }
-
-        // Check for duplicate phil_sys_number if provided (excluding current resident)
-        if (!empty($data['phil_sys_number']) && $this->residentRepository->existsByPhilSysNumber($data['phil_sys_number'], $residentId)) {
-            return [
-                "success" => false,
-                "message" => "PhilSys Number already exists. Please use a different number."
-            ];
-        }
-
-        // Validate address required fields if address data is provided
-        if (!empty($addressData) && (empty($addressData['barangay']) || empty($addressData['municipality_city']) || empty($addressData['province']))) {
-            return [
-                "success" => false,
-                "message" => "Please fill in all required address fields (Barangay, Municipality/City, Province)"
-            ];
-        }
-
-        return $this->residentRepository->updateWithRelations($residentId, $data, $addressData, $statusData, $biometricData);
+        return [
+            "success" => false,
+            "message" => "Residents are managed by profiling-system. Update residents there."
+        ];
     }
 
     public function delete($residentId)
     {
-        return $this->residentRepository->deleteWithRelations($residentId);
+        return [
+            "success" => false,
+            "message" => "Residents are managed by profiling-system. Delete residents there."
+        ];
     }
 }

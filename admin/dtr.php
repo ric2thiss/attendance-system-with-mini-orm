@@ -10,18 +10,36 @@ include_once '../shared/components/Breadcrumb.php';
 $currentUser = currentUser();
 $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 
-// Get all employees for dropdown
+// Get employees for dropdown:
+// - Prefer IDs that actually exist in `attendances` and/or `employee_fingerprints`
+// - Enrich with names from profiling-system.barangay_official when available
 try {
-    $employeeController = new EmployeeController();
-    $allEmployeesData = $employeeController->getAllEmployees();
-    $employees = $allEmployeesData['employees'] ?? [];
-    
-    // Ensure employees is an array
-    if (!is_array($employees)) {
-        $employees = [];
-    }
+    $pdo = (new Database())->connect();
+    $profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
+
+    $sql = "
+        SELECT
+            t.employee_id AS employee_id,
+            bo.first_name,
+            bo.middle_name,
+            bo.surname AS last_name,
+            NULL AS suffix
+        FROM (
+            SELECT DISTINCT employee_id FROM employee_fingerprints
+            UNION
+            SELECT DISTINCT employee_id FROM attendances
+        ) AS t
+        LEFT JOIN `{$profilingDbName}`.`barangay_official` AS bo
+            ON CAST(t.employee_id AS CHAR) = CAST(bo.id AS CHAR)
+        ORDER BY (bo.surname IS NULL) ASC, bo.surname ASC, bo.first_name ASC, t.employee_id ASC
+        LIMIT 500
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $employees = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Exception $e) {
-    error_log("DTR Page: Error fetching employees: " . $e->getMessage());
+    error_log("DTR Page: Error fetching employees for dropdown: " . $e->getMessage());
     $employees = [];
 }
 
@@ -355,6 +373,29 @@ try {
                         </table>
                     </div>
                 </div>
+
+                <!-- Attendance Pagination -->
+                <div id="attendance-pagination" class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 hidden">
+                    <div class="text-sm text-gray-600">
+                        <span id="attendance-range"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="attendance-page-size" class="text-sm text-gray-600">Rows</label>
+                        <select id="attendance-page-size" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <button id="attendance-prev" type="button" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Prev
+                        </button>
+                        <span id="attendance-page-info" class="text-sm text-gray-700 min-w-[90px] text-center"></span>
+                        <button id="attendance-next" type="button" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Anomalies Table -->
@@ -378,6 +419,28 @@ try {
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Anomalies Pagination -->
+                <div id="anomalies-pagination" class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 hidden">
+                    <div class="text-sm text-gray-600">
+                        <span id="anomalies-range"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="anomalies-page-size" class="text-sm text-gray-600">Rows</label>
+                        <select id="anomalies-page-size" class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                        </select>
+                        <button id="anomalies-prev" type="button" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Prev
+                        </button>
+                        <span id="anomalies-page-info" class="text-sm text-gray-700 min-w-[90px] text-center"></span>
+                        <button id="anomalies-next" type="button" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
@@ -411,6 +474,9 @@ try {
 
     <!-- JavaScript Modules -->
     <script type="module" src="js/dtr/main.js"></script>
+    
+    <!-- App Name Updater (standalone) -->
+    <script src="js/shared/appName.js"></script>
 
     <!-- Sidebar Toggle Script -->
     <script>

@@ -62,36 +62,49 @@ function PayrollSidebar($nav = null, $data = [], $logo = null)
     <aside class="sidebar-bg w-64 fixed top-0 left-0 h-screen text-white shadow-xl z-10 transition-transform duration-300 transform -translate-x-full md:translate-x-0 flex flex-col" id="sidebar">
         <!-- Scrollable Content Area -->
         <div class="flex-1 overflow-y-auto sidebar-scrollable">
-            <div class="p-6">
+            <div class="py-6">
                 <!-- Logo/System Name -->
-                <div class="flex items-center space-x-3 mb-8">
-                    <img src=<?=$logo? $logo : '../utils/img/logo.png'?> alt="Logo" class="rounded-full w-10 h-10">
-                    <span class="text-xl font-semibold tracking-wide">Payroll System</span>
+                <div class="px-6 mb-8">
+                    <div class="flex flex-col items-center text-center space-y-3">
+                        <img src=<?=$logo? $logo : '../utils/img/logo.png'?> alt="Logo" class="w-20 h-20 drop-shadow-lg">
+                        <span class="text-xl font-bold tracking-tight leading-tight">Payroll System</span>
+                    </div>
                 </div>
 
-                <!-- User Greeting -->
-                <div class="mb-10 p-3 bg-white bg-opacity-10 rounded-lg">
-                    <p class="text-sm text-gray-300">Welcome back,</p>
-                    <p class="font-medium">
-                        <?php
-                        // Get authenticated user name
-                        if (function_exists('currentUser')) {
-                            $user = currentUser();
-                            echo htmlspecialchars($user ? ($user['full_name'] ?? $user['username']) : 'Guest');
-                        } else {
-                            echo 'Guest';
-                        }
-                        ?>
-                    </p>
+                <!-- User Greeting Section -->
+                <div class="px-4 mb-8">
+                    <div class="flex items-center space-x-3 p-3 rounded-xl bg-white bg-opacity-10 transition-all">
+                        <!-- Yellow User Icon -->
+                        <div class="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
+                            <svg class="w-8 h-8 text-blue-900" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-xs text-blue-100 font-medium">Welcome back,</p>
+                            <p class="font-bold truncate text-sm">
+                                <?php
+                                if (function_exists('currentUser')) {
+                                    $user = currentUser();
+                                    echo htmlspecialchars($user ? ($user['full_name'] ?? $user['username']) : 'Guest');
+                                } else {
+                                    echo 'Guest';
+                                }
+                                ?>
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Navigation Links -->
-                <nav class="space-y-1">
+                <nav class="flex flex-col">
                     <?php foreach ($nav_menu as $label => $item): ?>
-                        <a href="<?= $item['link'] ?>" 
-                           class="flex items-center p-3 rounded-lg text-sm transition-colors 
-                                  hover:bg-white hover:bg-opacity-10 <?= ($nav === $label ? 'active-link' : '') ?>">
-                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" 
+                        <?php 
+                        $isActive = ($nav === $label);
+                        $linkClass = "flex items-center px-6 py-4 text-sm font-medium transition-all nav-link " . ($isActive ? 'active-link' : 'text-blue-100 hover:text-white');
+                        ?>
+                        <a href="<?= $item['link'] ?>" class="<?= $linkClass ?>">
+                            <svg class="w-5 h-5 mr-4 transition-opacity" fill="none" stroke="currentColor" 
                                  viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                  <?= $item['icon'] ?>
                             </svg>
@@ -102,12 +115,12 @@ function PayrollSidebar($nav = null, $data = [], $logo = null)
             </div>
         </div>
 
-        <!-- Fixed Bottom Section -->
-        <div class="flex-shrink-0 w-full">
+        <!-- Logout Button -->
+        <div class="p-6 mt-auto">
             <!-- Back to Attendance System Link -->
-            <div class="px-6 pb-3">
+            <div class="mb-3">
                 <a href="<?= $relativePath ?>dashboard.php" 
-                   class="flex items-center justify-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors shadow-lg">
+                   class="flex items-center justify-center p-3 rounded-xl bg-white bg-opacity-10 hover:bg-opacity-20 text-white text-sm transition-all font-medium">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" 
                          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -116,23 +129,20 @@ function PayrollSidebar($nav = null, $data = [], $logo = null)
                     Back to Attendance
                 </a>
             </div>
-
-            <!-- Logout Button -->
-            <div class="p-6 pt-0">
-                <?php
-                if (!defined("BASE_URL")) {
-                    require_once __DIR__ . "/../../config/app.config.php";
-                }
-                ?>
-                <a href="<?= BASE_URL ?>/auth/logout.php" class="flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-colors shadow-lg">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" 
-                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                               d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"></path>
-                    </svg>
-                    Logout
-                </a>
-            </div>
+            <?php
+            if (!defined("BASE_URL")) {
+                require_once __DIR__ . "/../../config/app.config.php";
+            }
+            ?>
+            <a href="<?= BASE_URL ?>/auth/logout.php" class="flex items-center justify-center p-3 rounded-xl bg-white bg-opacity-10 hover:bg-red-600 transition-all text-sm font-medium group">
+                <svg class="w-5 h-5 mr-2 text-red-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" 
+                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3a3 3 0 013 3v1"></path>
+                </svg>
+                Logout
+            </a>
+        </div>
         </div>
     </aside>
 

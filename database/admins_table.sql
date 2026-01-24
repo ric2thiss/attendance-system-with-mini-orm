@@ -23,14 +23,14 @@ CREATE TABLE IF NOT EXISTS `admins` (
 -- --------------------------------------------------------
 -- Default credentials:
 -- Username: admin
--- Password: admin123
+-- Password: password123
 -- Email: admin@attendance-system.local
 -- 
 -- Password is hashed using password_hash() with PASSWORD_DEFAULT
--- Hash: $2y$10$B9GCvqBQKBdMOhWbNr6uX.aaet97gsu1DgiXQvnBv.lfyruQV2w9i
--- This corresponds to password: admin123
+-- Hash: $2y$10$DqQbP29xzsrvZGaYuLHv0OnUVLPghaYBfJqUrhKtuUBFO3vJR2EDy
+-- This corresponds to password: password123
 -- --------------------------------------------------------
 
 INSERT INTO `admins` (`username`, `email`, `password`, `full_name`, `role`, `is_active`) VALUES
-('admin', 'admin@attendance-system.local', '$2y$10$B9GCvqBQKBdMOhWbNr6uX.aaet97gsu1DgiXQvnBv.lfyruQV2w9i', 'System Administrator', 'administrator', 1);
+('admin', 'admin@attendance-system.local', '$2y$10$DqQbP29xzsrvZGaYuLHv0OnUVLPghaYBfJqUrhKtuUBFO3vJR2EDy', 'System Administrator', 'administrator', 1);
 

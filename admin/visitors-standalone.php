@@ -16,7 +16,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resident Check-in | Face ID</title>
+    <title>Visitors Logbook | Face ID</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>

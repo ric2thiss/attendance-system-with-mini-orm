@@ -16,48 +16,11 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resident Check-in | Face ID</title>
+    <title>Visitors Logbook | Face ID</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <link rel="stylesheet" href="../utils/styles/global.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc; /* Light background for the main content area */
-        }
-        /* Custom dark blue for the sidebar */
-        .sidebar-bg {
-            background-color: #172B4D; /* A deep navy blue */
-        }
-        /* Active link background color */
-        .active-link {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #007bff; /* Light blue border highlight */
-        }
-        /* Sidebar scrollbar - hidden by default, shown on hover */
-        .sidebar-scrollable {
-            scrollbar-width: thin; /* Firefox - reserve space, hidden by default */
-            scrollbar-color: transparent transparent; /* Firefox - transparent thumb and track */
-            scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
-            -ms-overflow-style: -ms-autohiding-scrollbar; /* IE and Edge */
-        }
-        .sidebar-scrollable::-webkit-scrollbar {
-            width: 8px;
-        }
-        .sidebar-scrollable::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .sidebar-scrollable::-webkit-scrollbar-thumb {
-            background: transparent;
-            border-radius: 4px;
-        }
-        /* Show scrollbar on hover */
-        .sidebar-scrollable:hover {
-            scrollbar-color: rgba(255, 255, 255, 0.2) transparent; /* Firefox - show on hover */
-        }
-        .sidebar-scrollable:hover::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-        }
         /* Video container for visual cue */
         #video-feed-container {
             min-height: 400px;

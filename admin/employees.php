@@ -15,35 +15,137 @@ $perPage = 10; // Records per page
 $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $searchQuery = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-// Get filters
+// Filters (profiling-system strings)
 $filters = [];
-if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
-    $filters['department_id'] = intval($_GET['department_id']);
+$filters['chairmanship'] = isset($_GET['chairmanship']) ? trim($_GET['chairmanship']) : '';
+$filters['position'] = isset($_GET['position']) ? trim($_GET['position']) : '';
+
+// Fetch employees from profiling-system (source of truth). Attendance-system is read-only consumer.
+$db = (new Database())->connect();
+$profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
+$profilingEmployeesTable = "`{$profilingDbName}`.`barangay_official`";
+
+// Build filter option lists directly from profiling-system (no local departments/positions tables)
+$chairmanshipOptions = [];
+$positionOptions = [];
+try {
+    $stmt = $db->prepare("
+        SELECT DISTINCT bo.chairmanship
+        FROM {$profilingEmployeesTable} AS bo
+        WHERE bo.chairmanship IS NOT NULL AND TRIM(bo.chairmanship) <> ''
+        ORDER BY bo.chairmanship ASC
+    ");
+    $stmt->execute();
+    $chairmanshipOptions = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+} catch (Exception $e) {
+    $chairmanshipOptions = [];
 }
-if (isset($_GET['position_id']) && !empty($_GET['position_id'])) {
-    $filters['position_id'] = intval($_GET['position_id']);
+
+try {
+    $stmt = $db->prepare("
+        SELECT DISTINCT bo.position
+        FROM {$profilingEmployeesTable} AS bo
+        WHERE bo.position IS NOT NULL AND TRIM(bo.position) <> ''
+        ORDER BY bo.position ASC
+    ");
+    $stmt->execute();
+    $positionOptions = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+} catch (Exception $e) {
+    $positionOptions = [];
 }
 
-// Fetch data from controller
-$employeeController = new EmployeeController();
-$data = $employeeController->getPaginatedEmployees($currentPage, $perPage, $searchQuery, $filters);
+$where = [];
+$params = [];
 
-$employees = $data['employees'];
-$pagination = $data['pagination'];
-$searchQuery = $data['searchQuery'];
+if (!empty($searchQuery)) {
+    $where[] = "(CONCAT(bo.first_name, ' ', bo.surname) LIKE :q OR CAST(bo.id AS CHAR) LIKE :q OR bo.position LIKE :q)";
+    $params[':q'] = "%{$searchQuery}%";
+}
 
-$totalRecords = $pagination['totalRecords'];
-$totalPages = $pagination['totalPages'];
+// Apply filters (directly from profiling-system fields)
+if (!empty($filters['chairmanship'])) {
+    $where[] = "bo.chairmanship = :chairmanship";
+    $params[':chairmanship'] = $filters['chairmanship'];
+}
+
+if (!empty($filters['position'])) {
+    $where[] = "bo.position = :position";
+    $params[':position'] = $filters['position'];
+}
+
+$whereSql = !empty($where) ? (" WHERE " . implode(" AND ", $where)) : "";
+$offset = ($currentPage - 1) * $perPage;
+
+// Total count for pagination
+$countSql = "SELECT COUNT(*) as total FROM {$profilingEmployeesTable} AS bo{$whereSql}";
+$countStmt = $db->prepare($countSql);
+foreach ($params as $key => $val) {
+    $countStmt->bindValue($key, $val, PDO::PARAM_STR);
+}
+$countStmt->execute();
+$countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
+$totalRecords = (int) ($countRow['total'] ?? 0);
+$totalPages = $totalRecords > 0 ? (int) ceil($totalRecords / $perPage) : 1;
+
+// Page records
+$listSql = "
+    SELECT
+        bo.id as employee_id,
+        bo.first_name,
+        bo.middle_name,
+        bo.surname as last_name,
+        bo.chairmanship as department_name,
+        bo.position as position_name,
+        bo.status as activity_name
+    FROM {$profilingEmployeesTable} AS bo
+    {$whereSql}
+    ORDER BY bo.id DESC
+    LIMIT :limit OFFSET :offset
+";
+$listStmt = $db->prepare($listSql);
+foreach ($params as $key => $val) {
+    $listStmt->bindValue($key, $val, PDO::PARAM_STR);
+}
+$listStmt->bindValue(':limit', (int) $perPage, PDO::PARAM_INT);
+$listStmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);
+$listStmt->execute();
+$employees = $listStmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+
+// Determine fingerprint registration status using attendance-system data only (employee_fingerprints)
+$employeeIds = [];
+foreach ($employees as $emp) {
+    if (isset($emp->employee_id)) {
+        $employeeIds[] = (string) $emp->employee_id;
+    }
+}
+
+$enrolledEmployeeIds = [];
+if (!empty($employeeIds)) {
+    $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+    $fpStmt = $db->prepare("SELECT employee_id FROM employee_fingerprints WHERE employee_id IN ({$placeholders})");
+    $fpStmt->execute($employeeIds);
+    $enrolledEmployeeIds = array_flip(array_map('strval', $fpStmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+}
+
+foreach ($employees as $emp) {
+    $eid = isset($emp->employee_id) ? (string) $emp->employee_id : '';
+    $emp->has_fingerprint = ($eid !== '' && isset($enrolledEmployeeIds[$eid]));
+}
+
+$pagination = [
+    "currentPage" => $currentPage,
+    "totalPages" => $totalPages,
+    "totalRecords" => $totalRecords,
+    "perPage" => $perPage,
+    "startRecord" => $totalRecords > 0 ? ($offset + 1) : 0,
+    "endRecord" => $totalRecords > 0 ? min($offset + $perPage, $totalRecords) : 0,
+];
+
 $startRecord = $pagination['startRecord'];
 $endRecord = $pagination['endRecord'];
 
 // For employee table (keeping original structure for compatibility)
 $employeesData = ["employees" => $employees];
-
-$residents = (new ResidentController())->getAllResidentNotEmployee();
-$departmentLists = (new DepartmentController())->getDepartmentLists();
-$positions = (new PositionController())->getAllPosition();
-$lastEmployeeId = $employeeController->getLastEmployeeId();
 
 ?>
 <!DOCTYPE html>
@@ -166,11 +268,11 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                                 Search
                             </button>
                             <!-- Preserve filter parameters -->
-                            <?php if (isset($_GET['department_id']) && !empty($_GET['department_id'])): ?>
-                                <input type="hidden" name="department_id" value="<?= htmlspecialchars($_GET['department_id']) ?>">
+                            <?php if (!empty($filters['chairmanship'])): ?>
+                                <input type="hidden" name="chairmanship" value="<?= htmlspecialchars($filters['chairmanship']) ?>">
                             <?php endif; ?>
-                            <?php if (isset($_GET['position_id']) && !empty($_GET['position_id'])): ?>
-                                <input type="hidden" name="position_id" value="<?= htmlspecialchars($_GET['position_id']) ?>">
+                            <?php if (!empty($filters['position'])): ?>
+                                <input type="hidden" name="position" value="<?= htmlspecialchars($filters['position']) ?>">
                             <?php endif; ?>
                         </form>
                         <!-- Filter Button -->
@@ -182,11 +284,7 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                         </button>
                     </div>
 
-                    <!-- Add Employee Button -->
-                    <a href="employees/create.php" class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Add New Employee
-                    </a>
+                    <!-- Add Employee Button removed (attendance-system is read-only for employee data) -->
                 </div>
 
                 <!-- Employee Table -->
@@ -233,24 +331,27 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center space-x-2">
-                                        <a href="employees/edit.php?id=<?= htmlspecialchars($employee->employee_id ?? '') ?>"
-                                            class="editBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" 
-                                            title="Edit Employee">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                            Edit
-                                        </a>
-                                        <button 
-                                            class="deleteBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
-                                            data-id="<?= htmlspecialchars($employee->employee_id ?? '') ?>"
-                                            data-name="<?= htmlspecialchars(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')) ?>"
-                                            title="Delete Employee">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                            Delete
-                                        </button>
+                                        <?php if (!empty($employee->has_fingerprint)): ?>
+                                            <a href="biometric-registration.php?search=<?= urlencode((string)($employee->employee_id ?? '')) ?>"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" 
+                                                title="View Employee">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                View
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="biometric-registration.php?search=<?= urlencode((string)($employee->employee_id ?? '')) ?>"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1" 
+                                                title="Enroll Fingerprint">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4a6 6 0 00-6 6v3a2 2 0 01-2 2h0"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 10v3a6 6 0 01-6 6h-1"></path>
+                                                </svg>
+                                                Enroll
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -279,11 +380,11 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                         if (!empty($searchQuery)) {
                             $queryParams[] = 'search=' . urlencode($searchQuery);
                         }
-                        if (!empty($filters['department_id'])) {
-                            $queryParams[] = 'department_id=' . $filters['department_id'];
+                        if (!empty($filters['chairmanship'])) {
+                            $queryParams[] = 'chairmanship=' . urlencode($filters['chairmanship']);
                         }
-                        if (!empty($filters['position_id'])) {
-                            $queryParams[] = 'position_id=' . $filters['position_id'];
+                        if (!empty($filters['position'])) {
+                            $queryParams[] = 'position=' . urlencode($filters['position']);
                         }
                         $queryString = !empty($queryParams) ? '&' . implode('&', $queryParams) : '';
                         ?>
@@ -340,43 +441,6 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
             </div>
 
 
-                <!-- Delete Confirmation Modal -->
-                <div id="deleteEmployeeModal" class="fixed modal inset-0 z-50 hidden overflow-y-auto" aria-labelledby="delete-modal-title" role="dialog" aria-modal="true">
-                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
-
-                    <div class="flex items-center justify-center min-h-screen p-4 sm:p-6">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transition-all transform sm:my-8">
-                            <div class="p-6">
-                                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                    </svg>
-                                </div>
-                                <h3 class="text-xl font-semibold text-gray-800 text-center mb-2" id="delete-modal-title">
-                                    Delete Employee
-                                </h3>
-                                <p class="text-sm text-gray-600 text-center mb-6">
-                                    Are you sure you want to delete <span class="font-semibold text-gray-900" id="delete-employee-name"></span>?<br>
-                                    This action cannot be undone.
-                                </p>
-                                <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-                                    <button type="button" 
-                                        id="cancelDeleteBtn"
-                                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none">
-                                        Cancel
-                                    </button>
-                                    <button type="button" 
-                                        id="confirmDeleteBtn"
-                                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none transition-colors">
-                                        Delete Employee
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- End Delete Modal -->
-
                 <!-- Filter Modal -->
                 <div id="filterModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="filter-modal-title" role="dialog" aria-modal="true">
                     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" id="filterModalBackdrop" aria-hidden="true"></div>
@@ -400,29 +464,33 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
                                         <input type="hidden" name="search" value="<?= htmlspecialchars($searchQuery) ?>">
                                     <?php endif; ?>
 
-                                    <!-- Department Filter -->
+                                    <!-- Chairmanship / Department Filter -->
                                     <div>
-                                        <label for="filter_department_id" class="block text-sm font-medium text-gray-700 mb-2">
-                                            Department
+                                        <label for="filter_chairmanship" class="block text-sm font-medium text-gray-700 mb-2">
+                                            Chairmanship (Department)
                                         </label>
-                                        <select name="department_id" id="filter_department_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">All Departments</option>
-                                            <?php foreach($departmentLists as $departmentList):?>
-                                                <option value="<?=$departmentList->department_id?>" <?= (isset($filters['department_id']) && $filters['department_id'] == $departmentList->department_id) ? 'selected' : '' ?>><?=$departmentList->department_name?></option>
-                                            <?php endforeach ?>
+                                        <select name="chairmanship" id="filter_chairmanship" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All</option>
+                                            <?php foreach($chairmanshipOptions as $opt): ?>
+                                                <option value="<?= htmlspecialchars((string)$opt) ?>" <?= (!empty($filters['chairmanship']) && $filters['chairmanship'] === (string)$opt) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars((string)$opt) ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
 
                                     <!-- Position Filter -->
                                     <div>
-                                        <label for="filter_position_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <label for="filter_position" class="block text-sm font-medium text-gray-700 mb-2">
                                             Position
                                         </label>
-                                        <select name="position_id" id="filter_position_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">All Positions</option>
-                                            <?php foreach($positions as $position):?>
-                                                <option value="<?=$position->position_id?>" <?= (isset($filters['position_id']) && $filters['position_id'] == $position->position_id) ? 'selected' : '' ?>><?=$position->position_name?></option>
-                                            <?php endforeach ?>
+                                        <select name="position" id="filter_position" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All</option>
+                                            <?php foreach($positionOptions as $opt): ?>
+                                                <option value="<?= htmlspecialchars((string)$opt) ?>" <?= (!empty($filters['position']) && $filters['position'] === (string)$opt) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars((string)$opt) ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                 </div>
@@ -447,85 +515,6 @@ $lastEmployeeId = $employeeController->getLastEmployeeId();
     <!-- Modular JavaScript Entry Point -->
     <script type="module" src="./js/employees/main.js"></script>
     <script>
-        // Delete functionality
-        let employeeToDelete = null;
-        const deleteModal = document.getElementById('deleteEmployeeModal');
-        const deleteEmployeeName = document.getElementById('delete-employee-name');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-
-        // Handle delete button clicks
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('deleteBtn') || e.target.closest('.deleteBtn')) {
-                const btn = e.target.classList.contains('deleteBtn') ? e.target : e.target.closest('.deleteBtn');
-                const employeeId = btn.dataset.id;
-                const employeeName = btn.dataset.name || 'this employee';
-                
-                employeeToDelete = employeeId;
-                deleteEmployeeName.textContent = employeeName;
-                deleteModal.classList.remove('hidden');
-            }
-        });
-
-        // Cancel delete
-        cancelDeleteBtn.addEventListener('click', () => {
-            deleteModal.classList.add('hidden');
-            employeeToDelete = null;
-        });
-
-        // Close modal on backdrop click
-        deleteModal.addEventListener('click', (e) => {
-            if (e.target.id === 'deleteEmployeeModal') {
-                deleteModal.classList.add('hidden');
-                employeeToDelete = null;
-            }
-        });
-
-        // Confirm delete
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (!employeeToDelete) return;
-
-            const btn = confirmDeleteBtn;
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'Deleting...';
-
-            try {
-                const response = await fetch(`../api/employees/delete.php?id=${encodeURIComponent(employeeToDelete)}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // Show success message
-                    alert(result.message || 'Employee deleted successfully');
-                    // Reload page
-                    window.location.reload();
-                } else {
-                    alert(result.error || 'Failed to delete employee. Please try again.');
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                alert('An error occurred while deleting the employee. Please try again.');
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
-        });
-
-        // Close on ESC key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) {
-                deleteModal.classList.add('hidden');
-                employeeToDelete = null;
-            }
-        });
-
         // Filter Modal functionality
         const filterModal = document.getElementById('filterModal');
         const filterButton = document.getElementById('filterButton');

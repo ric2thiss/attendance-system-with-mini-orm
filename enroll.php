@@ -9,16 +9,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $data = json_decode(file_get_contents("php://input"), true);
 
     // Check if employee_id or resident_id is provided
-    if (isset($data["employee_id"]) && !empty($data["employee_id"])) {
-        // Employee enrollment
+    if ((isset($data["employee_id"]) && !empty($data["employee_id"])) || (isset($data["resident_id"]) && !empty($data["resident_id"]))) {
         $controller = new FingerprintsController();
         echo $controller->enroll($data);
-    } elseif (isset($data["resident_id"]) && !empty($data["resident_id"])) {
-        // Resident enrollment
-        $controller = new ResidentFingerprintsController();
-        echo $controller->enroll($data);
     } else {
-        // Neither provided
         http_response_code(422);
         echo json_encode([
             "success" => false,

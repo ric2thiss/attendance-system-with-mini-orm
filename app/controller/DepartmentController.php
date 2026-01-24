@@ -3,10 +3,25 @@
 class DepartmentController
 {
     protected $departmentRepository;
+    private $departmentsEnabled = true;
 
     public function __construct() {
         $db = (new Database())->connect();
         $this->departmentRepository = new DepartmentRepository($db);
+    }
+
+    /**
+     * Detect missing table errors (e.g., user removed departments table).
+     */
+    private function isMissingDepartmentsTable(PDOException $e): bool
+    {
+        $msg = strtolower($e->getMessage());
+        return ($e->getCode() === '42S02') || (str_contains($msg, 'departments') && str_contains($msg, "doesn't exist"));
+    }
+
+    private function disableDepartmentsFeature(): void
+    {
+        $this->departmentsEnabled = false;
     }
 
     /**
@@ -15,7 +30,19 @@ class DepartmentController
      */
     public function getAll()
     {
-        return $this->departmentRepository->findAll();
+        if (!$this->departmentsEnabled) {
+            return [];
+        }
+
+        try {
+            return $this->departmentRepository->findAll();
+        } catch (PDOException $e) {
+            if ($this->isMissingDepartmentsTable($e)) {
+                $this->disableDepartmentsFeature();
+                return [];
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -25,7 +52,19 @@ class DepartmentController
      */
     public function getById($id)
     {
-        return $this->departmentRepository->findById($id);
+        if (!$this->departmentsEnabled) {
+            return null;
+        }
+
+        try {
+            return $this->departmentRepository->findById($id);
+        } catch (PDOException $e) {
+            if ($this->isMissingDepartmentsTable($e)) {
+                $this->disableDepartmentsFeature();
+                return null;
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -35,6 +74,13 @@ class DepartmentController
      */
     public function store($data)
     {
+        if (!$this->departmentsEnabled) {
+            return [
+                "success" => false,
+                "message" => "Departments feature is disabled (departments table not present)."
+            ];
+        }
+
         // Validate required fields
         if (empty($data['department_name'])) {
             return [
@@ -43,31 +89,42 @@ class DepartmentController
             ];
         }
 
-        // Check for duplicate department_name
-        $existing = $this->departmentRepository->findBy('department_name', trim($data['department_name']));
-        if ($existing) {
+        try {
+            // Check for duplicate department_name
+            $existing = $this->departmentRepository->findBy('department_name', trim($data['department_name']));
+            if ($existing) {
+                return [
+                    "success" => false,
+                    "message" => "Department already exists."
+                ];
+            }
+
+            // Create the record
+            $insertData = ['department_name' => trim($data['department_name'])];
+            $id = $this->departmentRepository->create($insertData);
+
+            if ($id) {
+                return [
+                    "success" => true,
+                    "message" => "Department created successfully.",
+                    "id" => $id
+                ];
+            }
+
             return [
                 "success" => false,
-                "message" => "Department already exists."
+                "message" => "Failed to create department."
             ];
+        } catch (PDOException $e) {
+            if ($this->isMissingDepartmentsTable($e)) {
+                $this->disableDepartmentsFeature();
+                return [
+                    "success" => false,
+                    "message" => "Departments feature is disabled (departments table not present)."
+                ];
+            }
+            throw $e;
         }
-
-        // Create the record
-        $insertData = ['department_name' => trim($data['department_name'])];
-        $id = $this->departmentRepository->create($insertData);
-
-        if ($id) {
-            return [
-                "success" => true,
-                "message" => "Department created successfully.",
-                "id" => $id
-            ];
-        }
-
-        return [
-            "success" => false,
-            "message" => "Failed to create department."
-        ];
     }
 
     /**
@@ -78,6 +135,13 @@ class DepartmentController
      */
     public function update($id, $data)
     {
+        if (!$this->departmentsEnabled) {
+            return [
+                "success" => false,
+                "message" => "Departments feature is disabled (departments table not present)."
+            ];
+        }
+
         // Validate required fields
         if (empty($data['department_name'])) {
             return [
@@ -86,38 +150,49 @@ class DepartmentController
             ];
         }
 
-        // Check if record exists
-        if (!$this->departmentRepository->exists($id)) {
+        try {
+            // Check if record exists
+            if (!$this->departmentRepository->exists($id)) {
+                return [
+                    "success" => false,
+                    "message" => "Department not found."
+                ];
+            }
+
+            // Check for duplicate department_name (excluding current record)
+            $existing = $this->departmentRepository->findBy('department_name', trim($data['department_name']));
+            if ($existing && (is_object($existing) ? $existing->department_id : $existing['department_id']) != $id) {
+                return [
+                    "success" => false,
+                    "message" => "Department with this name already exists."
+                ];
+            }
+
+            // Update the record
+            $updateData = ['department_name' => trim($data['department_name'])];
+            $success = $this->departmentRepository->update($id, $updateData);
+
+            if ($success) {
+                return [
+                    "success" => true,
+                    "message" => "Department updated successfully."
+                ];
+            }
+
             return [
                 "success" => false,
-                "message" => "Department not found."
+                "message" => "Failed to update department."
             ];
+        } catch (PDOException $e) {
+            if ($this->isMissingDepartmentsTable($e)) {
+                $this->disableDepartmentsFeature();
+                return [
+                    "success" => false,
+                    "message" => "Departments feature is disabled (departments table not present)."
+                ];
+            }
+            throw $e;
         }
-
-        // Check for duplicate department_name (excluding current record)
-        $existing = $this->departmentRepository->findBy('department_name', trim($data['department_name']));
-        if ($existing && (is_object($existing) ? $existing->department_id : $existing['department_id']) != $id) {
-            return [
-                "success" => false,
-                "message" => "Department with this name already exists."
-            ];
-        }
-
-        // Update the record
-        $updateData = ['department_name' => trim($data['department_name'])];
-        $success = $this->departmentRepository->update($id, $updateData);
-
-        if ($success) {
-            return [
-                "success" => true,
-                "message" => "Department updated successfully."
-            ];
-        }
-
-        return [
-            "success" => false,
-            "message" => "Failed to update department."
-        ];
     }
 
     /**
@@ -127,28 +202,46 @@ class DepartmentController
      */
     public function delete($id)
     {
-        // Check if record exists
-        if (!$this->departmentRepository->exists($id)) {
+        if (!$this->departmentsEnabled) {
             return [
                 "success" => false,
-                "message" => "Department not found."
+                "message" => "Departments feature is disabled (departments table not present)."
             ];
         }
 
-        // Delete the record
-        $success = $this->departmentRepository->delete($id);
+        try {
+            // Check if record exists
+            if (!$this->departmentRepository->exists($id)) {
+                return [
+                    "success" => false,
+                    "message" => "Department not found."
+                ];
+            }
 
-        if ($success) {
+            // Delete the record
+            $success = $this->departmentRepository->delete($id);
+
+            if ($success) {
+                return [
+                    "success" => true,
+                    "message" => "Department deleted successfully."
+                ];
+            }
+
             return [
-                "success" => true,
-                "message" => "Department deleted successfully."
+                "success" => false,
+                "message" => "Failed to delete department."
             ];
+        } catch (PDOException $e) {
+            if ($this->isMissingDepartmentsTable($e)) {
+                $this->disableDepartmentsFeature();
+                return [
+                    "success" => false,
+                    "message" => "Departments feature is disabled (departments table not present)."
+                ];
+            }
+            throw $e;
         }
-
-        return [
-            "success" => false,
-            "message" => "Failed to delete department."
-        ];
     }
 
     /**
