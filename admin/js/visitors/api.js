@@ -152,6 +152,26 @@ export class VisitorAPI {
     }
 
     /**
+     * Fetch recent visitor logs
+     */
+    async fetchRecentLogs(limit = 10) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/visitors/recent-logs.php?limit=${limit}`);
+            const data = await response.json();
+
+            if (data.success) {
+                return data.logs || [];
+            } else {
+                console.error("Error fetching recent logs:", data.error);
+                return [];
+            }
+        } catch (err) {
+            console.error("Error fetching recent logs:", err);
+            return [];
+        }
+    }
+
+    /**
      * Send service application data to external API
      * 
      * @param {Object} servicePayload - Service application payload

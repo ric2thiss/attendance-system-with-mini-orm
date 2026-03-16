@@ -119,7 +119,7 @@ try {
     }
     
     if (!empty($purok)) {
-        $addressParts[] = 'Purok ' . $purok;
+        $addressParts[] = stripos($purok, 'purok') === false ? 'Purok ' . $purok : $purok;
     }
     
     if (!empty($barangay)) {

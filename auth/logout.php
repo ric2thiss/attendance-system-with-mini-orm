@@ -5,7 +5,6 @@ $authController = new AuthController();
 $authController->logout();
 
 // Redirect to login page with success message
-// BASE_URL is already defined in bootstrap.php via config/app.config.php
-header("Location: " . BASE_URL . "/auth/login.php?logout=success");
+header("Location: /login.php?logout=success");
 exit;
 

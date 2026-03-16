@@ -65,7 +65,7 @@ function Sidebar($nav = null, $data = [], $logo = null)
                 <div class="px-6 mb-8">
                     <div class="flex flex-col items-center text-center space-y-3">
                         <img src=<?=$logo? $logo : '../utils/img/logo.png'?> alt="Logo" class="w-20 h-20 drop-shadow-lg">
-                        <span id="app-name" class="text-xl font-bold tracking-tight leading-tight">Attendance System</span>
+                        <span id="app-name" class="text-xl font-bold tracking-tight leading-tight"></span>
                     </div>
                 </div>
 

@@ -18,4 +18,4 @@ echo json_encode([
 ]);
 exit;
 // (disabled)
-*** End of File
+// *** End of File

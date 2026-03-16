@@ -125,12 +125,11 @@ export class BookingModal {
     }
 
     /**
-     * Show booking information
+     * Show booking information (Scenario 1: auto-logged, brief confirmation)
      */
     showBooking(residentData, booking) {
         if (!this.modal) return;
 
-        // Set visitor info
         const visitorPhoto = document.getElementById('modal-visitor-photo');
         const visitorName = document.getElementById('modal-visitor-name');
         const visitorId = document.getElementById('modal-visitor-id');
@@ -141,11 +140,10 @@ export class BookingModal {
         if (visitorName && residentData?.name) {
             visitorName.textContent = residentData.name;
         }
-        if (visitorId && residentData?.phil_sys_number) {
-            visitorId.textContent = `PhilSys: ${residentData.phil_sys_number}`;
+        if (visitorId) {
+            visitorId.textContent = `Resident ID: ${residentData?.resident_id || residentData?.id || ''}`;
         }
 
-        // Set booking info
         const bookingInfo = document.getElementById('booking-info');
         const bookingService = document.getElementById('booking-service');
         const bookingDate = document.getElementById('booking-date');
@@ -155,29 +153,29 @@ export class BookingModal {
 
         if (bookingInfo) bookingInfo.classList.remove('hidden');
         if (bookingService) bookingService.textContent = booking.service_name || 'N/A';
-        
+
         if (bookingDate && booking.appointment_date) {
             const date = new Date(booking.appointment_date);
-            bookingDate.textContent = date.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+            bookingDate.textContent = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
             });
         }
-        
+
         if (bookingTime && booking.appointment_time) {
             bookingTime.textContent = booking.appointment_time;
         }
-        
+
         if (bookingStatus) {
             bookingStatus.textContent = booking.status || 'Pending';
-            const statusClass = booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
-                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+            const statusClass = booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-800';
             bookingStatus.className = `px-2 py-1 rounded text-sm ${statusClass}`;
         }
-        
+
         if (bookingNotes && booking.notes) {
             bookingNotes.textContent = booking.notes;
             bookingNotes.classList.remove('hidden');
@@ -185,22 +183,23 @@ export class BookingModal {
             bookingNotes.classList.add('hidden');
         }
 
-        // Hide services section
         const servicesSection = document.getElementById('services-section');
         if (servicesSection) servicesSection.classList.add('hidden');
-        
-        // Hide try again button when booking is shown (has appointment)
+
         const tryAgainBtn = document.getElementById('modal-try-again');
         if (tryAgainBtn) {
             tryAgainBtn.classList.add('hidden');
         }
 
-        // Update modal title
         const modalTitle = document.getElementById('modal-title');
-        if (modalTitle) modalTitle.textContent = 'Booking Information';
+        if (modalTitle) modalTitle.textContent = 'Logged Automatically (Online Booking)';
 
-        // Show modal
         this.show();
+
+        // Auto-close after 5 seconds, then stop camera and close modal
+        this._autoCloseTimer = setTimeout(() => {
+            this.hide();
+        }, 5000);
     }
 
     /**
@@ -290,17 +289,10 @@ export class BookingModal {
     /**
      * Handle service selection
      */
-    handleServiceSelection(service, residentData, onServiceSelect) {
-        console.log('Service selected:', service);
-        console.log('Resident:', residentData);
-        
-        // Call the callback if provided
+    async handleServiceSelection(service, residentData, onServiceSelect) {
         if (onServiceSelect && typeof onServiceSelect === 'function') {
-            onServiceSelect(service);
+            await onServiceSelect(service);
         }
-        
-        // Show confirmation
-        alert(`Service "${service.service_name}" selected. Processing...`);
         this.hide();
     }
 
@@ -319,9 +311,13 @@ export class BookingModal {
      * Hide modal
      */
     hide() {
+        if (this._autoCloseTimer) {
+            clearTimeout(this._autoCloseTimer);
+            this._autoCloseTimer = null;
+        }
         if (this.modal) {
             this.modal.classList.add('hidden');
-            document.body.style.overflow = ''; // Restore scrolling
+            document.body.style.overflow = '';
             document.dispatchEvent(new CustomEvent('visitor:modal-closed', { detail: { id: 'booking-modal' } }));
         }
     }

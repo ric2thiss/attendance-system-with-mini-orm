@@ -3,9 +3,10 @@
  * Handles form display and submission for non-resident visitors
  */
 export class NonResidentForm {
-    constructor(visitorAPI, onTryAgain = null) {
+    constructor(visitorAPI, onTryAgain = null, onSubmitSuccess = null) {
         this.visitorAPI = visitorAPI;
         this.onTryAgain = onTryAgain;
+        this.onSubmitSuccess = onSubmitSuccess;
         this.formModal = null;
         this.createFormModal();
     }
@@ -331,9 +332,12 @@ export class NonResidentForm {
                 }
             }
 
-            // Show success message
-            alert('Visitor registered successfully!');
             this.hide();
+
+            if (this.onSubmitSuccess && typeof this.onSubmitSuccess === 'function') {
+                const visitorName = `${visitorData.first_name} ${visitorData.last_name}`;
+                await this.onSubmitSuccess(visitorName);
+            }
 
         } catch (error) {
             console.error('Error submitting form:', error);

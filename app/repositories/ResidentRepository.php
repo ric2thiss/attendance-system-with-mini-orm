@@ -118,7 +118,6 @@ class ResidentRepository extends BaseRepository {
                 "residents.barangay",
                 "residents.municipality",
                 "residents.province",
-                "residents.household_no",
                 "residents.total_household",
                 "residents.voters_status",
                 "residents.educational_attainment",

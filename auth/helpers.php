@@ -33,10 +33,10 @@ function currentUser(): ?array
  * @param string $redirectTo
  * @return void
  */
-function requireAuth(string $redirectTo = null): void
+function requireAuth(?string $redirectTo = null): void
 {
     if ($redirectTo === null) {
-        $redirectTo = BASE_URL . "/auth/login.php";
+        $redirectTo = "/login.php";
     }
     AuthController::requireAuth($redirectTo);
 
@@ -71,7 +71,7 @@ function requireAuth(string $redirectTo = null): void
                 exit;
             }
 
-            header("Location: " . BASE_URL . "/auth/login.php?error=maintenance");
+            header("Location: /login.php?error=maintenance");
             exit;
         }
     } catch (Exception $e) {
@@ -109,14 +109,14 @@ function hasRole($roles): bool
  * @param string $redirectTo
  * @return void
  */
-function requireRole($roles, string $redirectTo = null): void
+function requireRole($roles, ?string $redirectTo = null): void
 {
     requireAuth();
-    
+
     if ($redirectTo === null) {
         $redirectTo = BASE_URL . "/admin/dashboard.php";
     }
-    
+
     if (!hasRole($roles)) {
         header("Location: " . $redirectTo . "?error=unauthorized");
         exit;

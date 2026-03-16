@@ -29,7 +29,7 @@ let statusUpdater;
 let bookingModal;
 let nonResidentForm;
 let faceRecognitionTimeout = null;
-const FACE_RECOGNITION_TIMEOUT = 5000; // 5 seconds
+const FACE_RECOGNITION_TIMEOUT = 5000; // 5 seconds scan window before showing manual form
 let recognitionLocked = false; // lock recognition while a modal/transaction is active
 
 function isAnyModalOpen() {
@@ -52,53 +52,53 @@ async function handleRecognizedFace(id, name, residentData) {
         recognitionLogic.pause();
     }
 
-    // Check if person is already logged
     if (recognitionLogic.isLoggedToday(id)) {
         recognitionLocked = false;
         if (recognitionLogic) {
             recognitionLogic.resume();
         }
-        return; // Skip if already logged
+        return;
     }
 
-    // Mark as logged
-    recognitionLogic.markAsLogged(id, 300000); // 5 minutes
+    recognitionLogic.markAsLogged(id, 300000);
 
-    // Update recognition status
     const personDetails = labeledDescriptors.find(p => p.id === id);
     statusUpdater.updateRecognized(name, personDetails);
 
-    // Add to activity log
-    activityLogger.addLogEntry(name);
-
-    // Check for booking
     try {
         const bookingResult = await visitorAPI.checkBooking(id);
-        
+
         if (bookingResult.has_booking && bookingResult.booking) {
-            // Scenario 1: Resident with booking - auto-log
+            // Scenario 1: auto-log, stop camera, show confirmation modal (auto-closes after 5s)
             await logResidentWithBooking(residentData, bookingResult.booking);
+            activityLogger.addLogEntry(name, bookingResult.booking.service_name || 'Booked Service');
+            refreshVisitorLogs();
+            stopCamera();
             bookingModal.showBooking(residentData, bookingResult.booking);
         } else {
-            // Scenario 2: Resident without booking - show services
+            // Scenario 2: show service selection modal
             const services = await visitorAPI.fetchServices();
             bookingModal.showServices(residentData, services, async (service) => {
                 await logResidentWithoutBooking(residentData, service);
+                activityLogger.addLogEntry(name, service.service_name || service.name || 'Service');
+                refreshVisitorLogs();
+                stopCamera();
             });
         }
     } catch (error) {
         console.error("Error checking booking:", error);
-        // On error, still show services modal
         try {
             const services = await visitorAPI.fetchServices();
             bookingModal.showServices(residentData, services, async (service) => {
                 await logResidentWithoutBooking(residentData, service);
+                activityLogger.addLogEntry(name, service.service_name || service.name || 'Service');
+                refreshVisitorLogs();
+                stopCamera();
             });
         } catch (serviceError) {
             console.error("Error fetching services:", serviceError);
         }
     } finally {
-        // If no modal is shown (e.g., error paths), unlock and resume scanning.
         if (!isAnyModalOpen()) {
             recognitionLocked = false;
             if (recognitionLogic) {
@@ -184,6 +184,51 @@ async function logResidentWithoutBooking(residentData, service) {
 }
 
 /**
+ * Refresh the visitor activity logs panel from the database
+ */
+async function refreshVisitorLogs() {
+    try {
+        const logs = await visitorAPI.fetchRecentLogs(10);
+        const logList = document.getElementById('logList');
+        if (!logList) return;
+
+        logList.innerHTML = '';
+
+        if (logs.length === 0) {
+            logList.innerHTML = '<li class="text-center text-gray-400">No recent activity.</li>';
+            return;
+        }
+
+        logs.forEach(log => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center gap-3 py-2';
+
+            const photoSrc = log.photo_url || 'https://placehold.co/36x36/6b7280/white?text=' + encodeURIComponent((log.first_name || '?')[0]);
+            const time = log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const date = log.created_at ? new Date(log.created_at).toLocaleDateString() : '';
+            const residentBadge = log.is_resident == 1
+                ? '<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Resident</span>'
+                : '<span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Non-Resident</span>';
+            const bookingBadge = log.had_booking == 1
+                ? '<span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Booked</span>'
+                : '';
+
+            li.innerHTML = `
+                <img src="${photoSrc}" alt="" class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="this.src='https://placehold.co/36x36/6b7280/white?text=V'">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-800 truncate">${log.full_name || 'Unknown'}</p>
+                    <p class="text-xs text-gray-500 truncate">${log.purpose || 'N/A'} ${residentBadge} ${bookingBadge}</p>
+                </div>
+                <span class="text-xs text-gray-400 whitespace-nowrap">${time}<br>${date}</span>
+            `;
+            logList.appendChild(li);
+        });
+    } catch (err) {
+        console.error('Error refreshing visitor logs:', err);
+    }
+}
+
+/**
  * Try again - reset recognition state and allow re-capture
  */
 function tryAgain() {
@@ -215,82 +260,85 @@ function tryAgain() {
     if (recognitionLogic) {
         recognitionLogic.resume();
     }
-    
-    // Restart timeout for non-resident form (if no face detected after 5 seconds)
-    if (recognitionLogic) {
-        faceRecognitionTimeout = setTimeout(() => {
-            if (!recognitionLogic.isLoggedToday('timeout-check')) {
-                // No face recognized - show non-resident form
-                console.log('No face recognized after 5 seconds. Showing non-resident form.');
-                nonResidentForm.show();
-            }
-        }, FACE_RECOGNITION_TIMEOUT);
-    }
+
+    faceRecognitionTimeout = setTimeout(() => {
+        const alreadyLogged = recognitionLogic && recognitionLogic.isLoggedToday('timeout-check');
+        if (!alreadyLogged && !isAnyModalOpen()) {
+            console.log('No face recognized – showing non-resident form.');
+            nonResidentForm.show();
+        }
+    }, FACE_RECOGNITION_TIMEOUT);
 }
 
 /**
  * Initialize face recognition system
+ *
+ * The webcam is always initialised so the Start Camera button works even when
+ * no resident face descriptors could be loaded (falls through to Scenario 3).
  */
 async function initializeFaceRecognition() {
+    // Always create the webcam handler so camera buttons work regardless of
+    // whether face models/descriptors load successfully.
+    webcamHandler = new WebcamHandler('webcam-video');
+
+    let faceMatcherReady = false;
+
     try {
-        // Update status to loading
         statusUpdater.updateLoading('Loading residents from database...');
 
-        // Fetch residents from API
         const residents = await visitorAPI.fetchResidents();
-        
-        if (residents.length === 0) {
-            statusUpdater.updateError(
-                'NO RESIDENTS FOUND!',
-                'No residents with photos found in database. Please add resident photos first.'
-            );
-            return;
+
+        if (residents.length > 0) {
+            labeledDescriptors = residents.map(resident => ({
+                name: resident.name,
+                id: resident.id,
+                img: resident.img,
+                imgs: resident.imgs || [resident.img],
+                resident_id: resident.resident_id,
+                data: resident
+            }));
+
+            statusUpdater.updateLoading(`Preparing ${labeledDescriptors.length} face models...`);
+
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const pathname = window.location.pathname;
+            const basePath = pathname.substring(0, pathname.indexOf('/admin')) || '';
+            const modelsUrl = `${protocol}//${host}${basePath}/visitors/models`;
+
+            faceRecognition = new FaceRecognition(modelsUrl);
+            await faceRecognition.loadModels();
+
+            try {
+                await faceRecognition.initializeFaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
+                faceMatcherReady = true;
+            } catch (descriptorError) {
+                console.warn('Face descriptor loading failed (resident photos may be too small):', descriptorError.message);
+                console.warn('Camera will still work – unrecognised visitors will use the manual form.');
+            }
+        } else {
+            console.warn('No residents with photos found. Camera will run in manual-only mode.');
         }
+    } catch (error) {
+        console.error('Error during face recognition setup:', error);
+    }
 
-        // Format residents for face recognition
-        // Support multiple photos per resident (3 angles)
-        labeledDescriptors = residents.map(resident => ({
-            name: resident.name,
-            id: resident.id,
-            img: resident.img, // First photo for display
-            imgs: resident.imgs || [resident.img], // All photos (3 angles) for recognition
-            resident_id: resident.resident_id,
-            data: resident // Store full resident data for later use
-        }));
-
-        statusUpdater.updateLoading(`Preparing ${labeledDescriptors.length} face models...`);
-
-        // Initialize face recognition
-        faceRecognition = new FaceRecognition('./models');
-        await faceRecognition.loadModels();
-
-        // Load known faces
-        await faceRecognition.initializeFaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
-
-        // Initialize webcam (but don't start it yet - wait for user to click Start button)
-        webcamHandler = new WebcamHandler('webcam-video');
-
-        // Initialize recognition logic with updated callback
+    // Set up recognition loop if we have valid descriptors
+    if (faceMatcherReady && faceRecognition && webcamHandler) {
         recognitionLogic = new RecognitionLogic(
             webcamHandler,
             faceRecognition,
             labeledDescriptors,
             DETECTION_INTERVAL
         );
-        
-        // Set callback that includes resident data
+
         recognitionLogic.setOnRecognizedCallback((id, name, personData) => {
-            // Clear timeout if face is recognized
             if (faceRecognitionTimeout) {
                 clearTimeout(faceRecognitionTimeout);
                 faceRecognitionTimeout = null;
             }
-            
-            // Use personData if provided, otherwise find it
+
             let residentData = personData || labeledDescriptors.find(p => p.id === id);
-            
-            // Ensure we have the correct data structure
-            // If personData has a nested 'data' property, use that, otherwise use personData directly
             if (residentData && residentData.data) {
                 residentData = {
                     ...residentData.data,
@@ -298,26 +346,21 @@ async function initializeFaceRecognition() {
                     name: residentData.name
                 };
             }
-            
+
             handleRecognizedFace(id, name, residentData);
         });
+    }
 
-        // Update status to ready (camera will be started manually via button)
-        statusUpdater.updateReady();
-    } catch (error) {
-        console.error("Error initializing face recognition:", error);
-        let errorTitle = 'MODEL LOAD FAILED!';
-        let errorMessage = 'Check "models" folder path and network status.';
-        
-        if (error.message.includes('No valid face descriptors')) {
-            errorTitle = 'NO KNOWN FACES!';
-            errorMessage = 'Please add known faces to the list.';
-        } else if (error.message.includes('CAMERA')) {
-            errorTitle = 'CAMERA ERROR';
-            errorMessage = 'Camera access denied. Check permissions.';
+    // Always mark ready so the user can click Start Camera
+    statusUpdater.updateReady();
+    if (!faceMatcherReady) {
+        statusUpdater.updateLoading('Ready – camera only (no face data loaded). Click Start Camera.');
+        // Override the icon to green so it doesn't look like an error
+        const icon = document.getElementById('status-icon');
+        if (icon) {
+            icon.classList.remove('text-yellow-500', 'text-red-500', 'animate-pulse');
+            icon.classList.add('text-green-500');
         }
-        
-        statusUpdater.updateError(errorTitle, errorMessage);
     }
 }
 
@@ -327,53 +370,46 @@ async function initializeFaceRecognition() {
 async function startCamera() {
     const startBtn = document.getElementById('start-camera-btn');
     const stopBtn = document.getElementById('stop-camera-btn');
-    
+
     if (!webcamHandler) {
         console.error('Webcam handler not initialized');
         return;
     }
 
     try {
-        // Disable start button while starting
         if (startBtn) {
             startBtn.disabled = true;
             startBtn.textContent = 'Starting...';
         }
 
-        // Start webcam
+        // Reset logged state so detection works again on each new scan session
+        if (recognitionLogic) {
+            recognitionLogic.resetLoggedState();
+        }
+
         await webcamHandler.start();
 
-        // Initialize recognition logic if not already started
+        // Start face recognition loop only if descriptors were loaded
         if (recognitionLogic && !recognitionLogic.isRunning()) {
             recognitionLogic.start();
         }
 
-        // Set timeout for non-resident form (Scenario 3)
-        // If no face is recognized after 5 seconds, show non-resident form
+        // Scenario 3 timeout: show non-resident form if no face is matched within 5 seconds.
         faceRecognitionTimeout = setTimeout(() => {
-            if (recognitionLogic && !recognitionLogic.isLoggedToday('timeout-check')) {
-                // No face recognized - show non-resident form
-                console.log('No face recognized after 5 seconds. Showing non-resident form.');
+            const alreadyLogged = recognitionLogic && recognitionLogic.isLoggedToday('timeout-check');
+            if (!alreadyLogged && !isAnyModalOpen()) {
+                console.log('No face recognized – showing non-resident form.');
                 nonResidentForm.show();
             }
         }, FACE_RECOGNITION_TIMEOUT);
 
-        // Update button visibility
-        if (startBtn) {
-            startBtn.classList.add('hidden');
-        }
-        if (stopBtn) {
-            stopBtn.classList.remove('hidden');
-        }
+        if (startBtn) startBtn.classList.add('hidden');
+        if (stopBtn) stopBtn.classList.remove('hidden');
 
-        // Update status
-        if (statusUpdater) {
-            statusUpdater.updateReady();
-        }
+        if (statusUpdater) statusUpdater.updateReady();
     } catch (error) {
         console.error("Error starting camera:", error);
-        
-        // Re-enable start button on error
+
         if (startBtn) {
             startBtn.disabled = false;
             startBtn.innerHTML = `
@@ -385,17 +421,16 @@ async function startCamera() {
             `;
         }
 
-        // Update status with error
         if (statusUpdater) {
             let errorTitle = 'CAMERA ERROR';
             let errorMessage = 'Camera access denied. Please check permissions and try again.';
-            
+
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                 errorMessage = 'Camera permission denied. Please allow camera access and click Start again.';
             } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
                 errorMessage = 'No camera found. Please connect a camera and try again.';
             }
-            
+
             statusUpdater.updateError(errorTitle, errorMessage);
         }
     }
@@ -466,8 +501,12 @@ function init() {
     // Initialize booking modal with tryAgain callback
     bookingModal = new BookingModal(tryAgain);
 
-    // Initialize non-resident form with tryAgain callback
-    nonResidentForm = new NonResidentForm(visitorAPI, tryAgain);
+    // Initialize non-resident form with callbacks for try-again and post-submit
+    nonResidentForm = new NonResidentForm(visitorAPI, tryAgain, async (visitorName) => {
+        activityLogger.addLogEntry(visitorName || 'Visitor', 'Registered');
+        refreshVisitorLogs();
+        stopCamera();
+    });
 
     // Initialize sidebar toggle
     initSidebar();
@@ -486,6 +525,9 @@ function init() {
     if (stopBtn) {
         stopBtn.addEventListener('click', stopCamera);
     }
+
+    // Load initial visitor logs
+    refreshVisitorLogs();
 
     // Start face recognition system (but don't start camera automatically)
     initializeFaceRecognition();

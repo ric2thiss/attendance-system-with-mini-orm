@@ -20,14 +20,17 @@ class VisitorLogController {
         $residentId = isset($data['resident_id']) && !empty($data['resident_id']) ? (int) $data['resident_id'] : null;
         $isResident = $residentId !== null;
 
-        if ($isResident && !$this->residentRepository->existsById($residentId)) {
-            return [
-                'success' => false,
-                'error' => "Resident not found in profiling system."
-            ];
+        $residentRecord = null;
+        if ($isResident) {
+            $residentRecord = $this->residentRepository->getAllWithRelations((string) $residentId);
+            if (empty($residentRecord)) {
+                return [
+                    'success' => false,
+                    'error' => "Resident not found in profiling system."
+                ];
+            }
         }
 
-        // Validate required fields for non-residents
         if (!$isResident) {
             $requiredFields = ['first_name', 'last_name', 'address', 'purpose'];
             foreach ($requiredFields as $field) {
@@ -45,36 +48,53 @@ class VisitorLogController {
             ];
         }
 
-        // Set defaults
-        $logData = [
-            'first_name' => $isResident ? null : trim($data['first_name'] ?? ''),
-            'middle_name' => $isResident ? null : (isset($data['middle_name']) ? trim($data['middle_name']) : null),
-            'last_name' => $isResident ? null : trim($data['last_name'] ?? ''),
-            'address' => $isResident ? null : trim($data['address'] ?? ''),
-            'purpose' => trim($data['purpose']),
-            'is_resident' => $isResident ? 1 : 0,
-            'had_booking' => isset($data['had_booking']) ? ($data['had_booking'] ? 1 : 0) : 0,
-            'booking_id' => isset($data['booking_id']) ? trim($data['booking_id']) : null,
-        ];
+        if ($isResident && $residentRecord) {
+            $purok = $residentRecord['purok'] ?? '';
+            $addressParts = array_filter([
+                $purok ? (stripos($purok, 'purok') === false ? 'Purok ' . $purok : $purok) : '',
+                $residentRecord['barangay'] ? 'Brgy. ' . $residentRecord['barangay'] : '',
+                $residentRecord['municipality_city'] ?? '',
+                $residentRecord['province'] ?? '',
+            ]);
+            $resolvedAddress = !empty($addressParts) ? implode(', ', $addressParts) : ($data['address'] ?? 'N/A');
 
-        // Handle resident_id
-        $logData['resident_id'] = $residentId;
-
-        // Handle birthdate (required for non-residents, optional for residents)
-        if ($isResident) {
-            $logData['birthdate'] = null;
-        } elseif (isset($data['birthdate']) && !empty($data['birthdate'])) {
-            $logData['birthdate'] = $data['birthdate'];
+            $logData = [
+                'resident_id' => $residentId,
+                'first_name' => $residentRecord['first_name'] ?? ($data['first_name'] ?? ''),
+                'middle_name' => $residentRecord['middle_name'] ?? ($data['middle_name'] ?? null),
+                'last_name' => $residentRecord['last_name'] ?? ($data['last_name'] ?? ''),
+                'birthdate' => $residentRecord['birthdate'] ?? null,
+                'address' => !empty($data['address']) ? trim($data['address']) : $resolvedAddress,
+                'purpose' => trim($data['purpose']),
+                'is_resident' => 1,
+                'had_booking' => isset($data['had_booking']) ? ($data['had_booking'] ? 1 : 0) : 0,
+                'booking_id' => isset($data['booking_id']) ? trim((string) $data['booking_id']) : null,
+            ];
         } else {
-            return [
-                'success' => false,
-                'error' => 'Birthdate is required for non-resident visitors'
+            if (!isset($data['birthdate']) || empty($data['birthdate'])) {
+                return [
+                    'success' => false,
+                    'error' => 'Birthdate is required for non-resident visitors'
+                ];
+            }
+
+            $logData = [
+                'resident_id' => null,
+                'first_name' => trim($data['first_name'] ?? ''),
+                'middle_name' => isset($data['middle_name']) ? trim($data['middle_name']) : null,
+                'last_name' => trim($data['last_name'] ?? ''),
+                'birthdate' => $data['birthdate'],
+                'address' => trim($data['address'] ?? ''),
+                'purpose' => trim($data['purpose']),
+                'is_resident' => 0,
+                'had_booking' => 0,
+                'booking_id' => null,
             ];
         }
 
         try {
             $log = $this->visitorLogRepository->createLog($logData);
-            
+
             return [
                 'success' => true,
                 'message' => 'Visitor log created successfully',

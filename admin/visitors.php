@@ -55,13 +55,19 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
             align-items: center;
             justify-content: center;
         }
-        /* Log list style for better look */
         #logList li {
-            padding: 6px 0;
-            border-bottom: 1px dashed #e5e7eb;
+            padding: 8px 4px;
+            border-bottom: 1px solid #f3f4f6;
         }
         #logList li:last-child {
             border-bottom: none;
+        }
+        #logList::-webkit-scrollbar {
+            width: 4px;
+        }
+        #logList::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 2px;
         }
     </style>
 </head>
@@ -152,9 +158,9 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                     </div>
 
                     <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-3">Recent Activity Log</h2>
-                        <ul id="logList" class="space-y-2 text-sm text-gray-700">
-                            <li class="text-center text-gray-400">No recent activity.</li>
+                        <h2 class="text-lg font-semibold text-gray-800 mb-3">Recent Visitor Logs</h2>
+                        <ul id="logList" class="space-y-1 text-sm text-gray-700 max-h-[400px] overflow-y-auto">
+                            <li class="text-center text-gray-400 py-4">Loading visitor logs...</li>
                         </ul>
                     </div>
 

@@ -51,9 +51,7 @@ try {
     }
     */
     
-    // Placeholder: Return mock services
-    // Replace this with actual API call when external API is ready
-    $mockServices = [
+    $services = [
         [
             'service_id' => 1,
             'service_name' => 'Barangay Clearance',
@@ -63,39 +61,38 @@ try {
         ],
         [
             'service_id' => 2,
-            'service_name' => 'Business Permit',
-            'description' => 'Application for business permit',
-            'duration' => '30 minutes',
-            'fee' => 500
+            'service_name' => 'Certificate of Residency',
+            'description' => 'Official proof of residence within the barangay',
+            'duration' => '15 minutes',
+            'fee' => 0
         ],
         [
             'service_id' => 3,
-            'service_name' => 'Indigency Certificate',
+            'service_name' => 'Certificate of Indigency',
             'description' => 'Certificate of indigency for government assistance',
             'duration' => '20 minutes',
             'fee' => 0
         ],
         [
             'service_id' => 4,
-            'service_name' => 'Cedula',
-            'description' => 'Community tax certificate',
-            'duration' => '10 minutes',
-            'fee' => 30
+            'service_name' => 'Business Permit',
+            'description' => 'Application for barangay business permit',
+            'duration' => '30 minutes',
+            'fee' => 500
         ],
         [
             'service_id' => 5,
-            'service_name' => 'Death Certificate',
-            'description' => 'Request for death certificate',
-            'duration' => '15 minutes',
+            'service_name' => 'Other Barangay Services',
+            'description' => 'General inquiry or other barangay services',
+            'duration' => 'Varies',
             'fee' => 0
         ]
     ];
-    
+
     echo json_encode([
         'success' => true,
-        'services' => $mockServices,
-        'count' => count($mockServices),
-        'note' => 'This is placeholder data. Replace with external API integration.'
+        'services' => $services,
+        'count' => count($services)
     ]);
     
 } catch (Exception $e) {
