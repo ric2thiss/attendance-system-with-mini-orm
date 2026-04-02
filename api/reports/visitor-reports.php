@@ -32,7 +32,7 @@ try {
                     DATE(created_at) as visit_date,
                     COUNT(*) as visitor_count
                 FROM visitor_logs
-                WHERE DATE(created_at) BETWEEN ? AND ?
+                WHERE deleted_at IS NULL AND DATE(created_at) BETWEEN ? AND ?
                 GROUP BY DATE(created_at)
                 ORDER BY visit_date ASC
             ";
@@ -64,7 +64,7 @@ try {
                     purpose as service,
                     COUNT(*) as count
                 FROM visitor_logs
-                WHERE DATE(created_at) BETWEEN ? AND ?
+                WHERE deleted_at IS NULL AND DATE(created_at) BETWEEN ? AND ?
                 GROUP BY purpose
                 ORDER BY count DESC
             ";
@@ -99,7 +99,7 @@ try {
                     END as visitor_type,
                     COUNT(*) as count
                 FROM visitor_logs
-                WHERE DATE(created_at) BETWEEN ? AND ?
+                WHERE deleted_at IS NULL AND DATE(created_at) BETWEEN ? AND ?
                 GROUP BY is_resident
                 ORDER BY is_resident DESC
             ";
@@ -134,7 +134,7 @@ try {
                     END as appointment_type,
                     COUNT(*) as count
                 FROM visitor_logs
-                WHERE DATE(created_at) BETWEEN ? AND ?
+                WHERE deleted_at IS NULL AND DATE(created_at) BETWEEN ? AND ?
                 GROUP BY had_booking
                 ORDER BY had_booking DESC
             ";
@@ -167,7 +167,7 @@ try {
                     COUNT(*) as count
                 FROM visitor_logs vl
                 LEFT JOIN `" . PROFILING_DB_NAME . "`.`residents` r ON vl.resident_id = r.id AND vl.is_resident = 1
-                WHERE DATE(vl.created_at) BETWEEN ? AND ?
+                WHERE vl.deleted_at IS NULL AND DATE(vl.created_at) BETWEEN ? AND ?
                 GROUP BY COALESCE(r.sex, 'Unknown')
                 ORDER BY count DESC
             ";
@@ -211,7 +211,7 @@ try {
                     COALESCE(vl.purpose, 'Not Specified') as service,
                     COUNT(*) as count
                 FROM visitor_logs vl
-                WHERE DATE(vl.created_at) BETWEEN ? AND ?
+                WHERE vl.deleted_at IS NULL AND DATE(vl.created_at) BETWEEN ? AND ?
                 GROUP BY age_group, service
                 ORDER BY age_group, count DESC
             ";

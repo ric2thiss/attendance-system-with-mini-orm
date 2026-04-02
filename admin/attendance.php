@@ -17,9 +17,24 @@ $fromDate = isset($_GET['from']) ? trim($_GET['from']) : null;
 $toDate = isset($_GET['to']) ? trim($_GET['to']) : null;
 $perPage = 10; // Records per page
 
+$activityFilterInput = isset($_GET['activity_id']) ? trim((string) $_GET['activity_id']) : '';
+$activityFilter = null;
+if ($activityFilterInput === '0') {
+    $activityFilter = 0;
+} elseif ($activityFilterInput !== '' && ctype_digit($activityFilterInput)) {
+    $activityFilter = (int) $activityFilterInput;
+}
+
 // Get data from controller
 $attendanceController = new AttendanceController();
-$data = $attendanceController->getPaginatedAttendances($currentPage, $perPage, $searchQuery, $fromDate, $toDate);
+$data = $attendanceController->getPaginatedAttendances($currentPage, $perPage, $searchQuery, $fromDate, $toDate, $activityFilter);
+
+try {
+    $activityFilterList = Activity::query()->orderByRaw('activity_date DESC, id DESC')->limit(200)->get();
+} catch (Throwable $e) {
+    $activityFilterList = [];
+    error_log('attendance.php activities filter: ' . $e->getMessage());
+}
 
 // Extract data for view
 $attendances = $data['attendances'];
@@ -34,6 +49,7 @@ $searchQuery = $data['searchQuery'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Attendance</title>
+    <meta name="base-url" content="<?= htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="../utils/styles/global.css">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -185,16 +201,22 @@ $searchQuery = $data['searchQuery'];
                     ['label' => 'Attendance', 'link' => 'attendance.php']
                 ]); ?>
 
-                <!-- Top Action Buttons (Attendance Now & Export) -->
-                <div class="flex justify-end space-x-3 mt-4">
-                    <button onclick="window.location.href='biometrics://identify'" class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Attendance Now
-                    </button>
-                    <button class="flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors shadow-md text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        Export Attendance
-                    </button>
+                <!-- Top actions: event dropdown + Attendance Now + Export (single row) -->
+                <div class="flex flex-nowrap items-end justify-end gap-3 overflow-x-auto pb-1 mt-4">
+                        <div class="flex flex-col shrink-0 min-w-[200px] max-w-[280px]">
+                            <label for="attendance-activity-select" class="text-xs font-medium text-gray-600 mb-1">Activity / event</label>
+                            <select id="attendance-activity-select" class="w-full py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm h-[38px]">
+                                <option value="">Loading…</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="window.location.href='biometrics://identify'" class="flex items-center shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-md text-sm h-[38px]">
+                            <svg class="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Attendance Now
+                        </button>
+                        <button type="button" class="flex items-center shrink-0 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors shadow-md text-sm h-[38px]">
+                            <svg class="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Export Attendance
+                        </button>
                 </div>
             </header>
             
@@ -212,6 +234,15 @@ $searchQuery = $data['searchQuery'];
                         <div class="mb-4 flex items-center space-x-2 text-sm">
                             <span id="ws-status-indicator" class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>
                             <span id="ws-status-text" class="text-gray-600">Connecting...</span>
+                        </div>
+                        <div class="mb-4 pt-3 border-t border-gray-200">
+                            <label class="flex items-start gap-3 cursor-pointer text-sm text-gray-700">
+                                <input type="checkbox" id="attendance-speech-toggle" class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 shrink-0" checked>
+                                <span>
+                                    <span class="font-medium text-gray-800">Read attendance alerts aloud</span>
+                                    <span class="block text-xs text-gray-500 mt-0.5">Success: speaks title and employee name. Errors: title only. New alerts stop the previous voice.</span>
+                                </span>
+                            </label>
                         </div>
                         
                         <!-- Clock & Insight (Dynamic weather icon) -->
@@ -276,6 +307,25 @@ $searchQuery = $data['searchQuery'];
                                         <input type="date" id="filter-to" name="to" value="<?= htmlspecialchars($toDate ?? '') ?>"
                                             class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 transition">
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label for="filter-activity" class="block text-sm font-medium text-gray-500 mb-1">Activity</label>
+                                    <select id="filter-activity" name="activity_id" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                        <option value="">All activities</option>
+                                        <option value="0" <?= $activityFilterInput === '0' ? 'selected' : '' ?>>No event</option>
+                                        <?php foreach ($activityFilterList as $act): ?>
+                                            <?php
+                                            $aid = is_object($act) ? (int) ($act->id ?? 0) : (int) ($act['id'] ?? 0);
+                                            $aname = is_object($act) ? (string) ($act->name ?? '') : (string) ($act['name'] ?? '');
+                                            $adate = is_object($act) ? (string) ($act->activity_date ?? '') : (string) ($act['activity_date'] ?? '');
+                                            $asrc = is_object($act) ? (string) ($act->source ?? '') : (string) ($act['source'] ?? '');
+                                            ?>
+                                            <option value="<?= $aid ?>" <?= (string) $aid === $activityFilterInput ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($aname . ' (' . $adate . ', ' . $asrc . ')') ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
 
                                 <!-- Preserve search parameter -->
@@ -377,6 +427,9 @@ $searchQuery = $data['searchQuery'];
                                 <?php if (!empty($toDate)): ?>
                                     <input type="hidden" name="to" value="<?= htmlspecialchars($toDate) ?>">
                                 <?php endif; ?>
+                                <?php if ($activityFilterInput !== ''): ?>
+                                    <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activityFilterInput) ?>">
+                                <?php endif; ?>
                             </form>
                             <!-- Filter Button -->
                             <button type="button" id="filterButton" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
@@ -397,12 +450,13 @@ $searchQuery = $data['searchQuery'];
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date / Time</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
                                     </tr>
                                 </thead>
                                 <tbody id="attendance-table-body" class="bg-white divide-y divide-gray-200">
                                     <?php if (empty($attendances)): ?>
                                     <tr id="no-records-row">
-                                        <td colspan="4" class="px-3 py-8 text-center text-gray-500">
+                                        <td colspan="5" class="px-3 py-8 text-center text-gray-500">
                                             <p class="text-sm">No attendance records found.</p>
                                         </td>
                                     </tr>
@@ -427,6 +481,7 @@ $searchQuery = $data['searchQuery'];
                                         <td class="px-3 py-3 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"><?= htmlspecialchars($attendance->window_label ?? $attendance->window ?? '') ?></span>
                                         </td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-600"><?= htmlspecialchars($attendance->activity_name ?? '—') ?></td>
                                     </tr>
                                     <?php endforeach ?>
                                     <?php endif; ?>
@@ -440,7 +495,7 @@ $searchQuery = $data['searchQuery'];
                         <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-600">
                             <div>
                                 Showing <span class="font-medium"><?= $pagination['startRecord'] ?></span> to <span class="font-medium"><?= $pagination['endRecord'] ?></span> of <span class="font-medium"><?= $pagination['totalRecords'] ?></span> records
-                                <?php if (!empty($searchQuery) || !empty($fromDate) || !empty($toDate)): ?>
+                                <?php if (!empty($searchQuery) || !empty($fromDate) || !empty($toDate) || $activityFilterInput !== ''): ?>
                                     <span class="text-gray-500">(filtered)</span>
                                 <?php endif; ?>
                             </div>
@@ -459,6 +514,9 @@ $searchQuery = $data['searchQuery'];
                                 }
                                 if (!empty($toDate)) {
                                     $queryParams[] = 'to=' . urlencode($toDate);
+                                }
+                                if ($activityFilterInput !== '') {
+                                    $queryParams[] = 'activity_id=' . urlencode($activityFilterInput);
                                 }
                                 $queryString = !empty($queryParams) ? '&' . implode('&', $queryParams) : '';
                                 ?>
@@ -534,11 +592,15 @@ $searchQuery = $data['searchQuery'];
     <!-- Pass PHP config values to JavaScript via meta tags -->
     <meta name="websocket-url" content="<?php echo htmlspecialchars(WEBSOCKET_URL); ?>">
     <meta name="attendance-api-url" content="<?php echo htmlspecialchars(API_ENDPOINT_ATTENDANCES); ?>">
+    <meta name="activities-options-url" content="<?php echo htmlspecialchars(API_ENDPOINT_ACTIVITIES_OPTIONS); ?>">
+    <meta name="activities-active-url" content="<?php echo htmlspecialchars(API_ENDPOINT_ACTIVITIES_ACTIVE); ?>">
     
     <!-- Modular JavaScript Entry Point -->
     <script type="module" 
             data-websocket-url="<?php echo htmlspecialchars(WEBSOCKET_URL); ?>"
             data-attendance-api-url="<?php echo htmlspecialchars(API_ENDPOINT_ATTENDANCES); ?>"
+            data-activities-options-url="<?php echo htmlspecialchars(API_ENDPOINT_ACTIVITIES_OPTIONS); ?>"
+            data-activities-active-url="<?php echo htmlspecialchars(API_ENDPOINT_ACTIVITIES_ACTIVE); ?>"
             src="./js/attendance/main.js"></script>
 
     <!-- Filter Toggle Script -->

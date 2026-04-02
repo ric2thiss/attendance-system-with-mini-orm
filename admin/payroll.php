@@ -3,37 +3,6 @@ require_once __DIR__ . "/../bootstrap.php";
 require_once __DIR__ . "/../auth/helpers.php";
 requireAuth(); // Require authentication - redirects to login if not authenticated
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Check password confirmation (with idle timeout of 4 minutes = 240 seconds)
-$idleTimeout = 240; // 4 minutes in seconds
-$passwordConfirmed = isset($_SESSION['payroll_password_confirmed']) && $_SESSION['payroll_password_confirmed'] === true;
-
-if (!$passwordConfirmed) {
-    // Password not confirmed - redirect to confirmation page
-    header("Location: payroll-confirm.php");
-    exit;
-}
-
-// Check if confirmation has expired due to idle time
-$lastActivity = $_SESSION['payroll_last_activity'] ?? $_SESSION['payroll_confirmed_at'] ?? 0;
-$timeSinceActivity = time() - $lastActivity;
-
-if ($timeSinceActivity > $idleTimeout) {
-    // Expired due to idle time - redirect to confirmation page
-    unset($_SESSION['payroll_password_confirmed']);
-    unset($_SESSION['payroll_confirmed_at']);
-    unset($_SESSION['payroll_last_activity']);
-    header("Location: payroll-confirm.php");
-    exit;
-}
-
-// Update last activity on page load
-$_SESSION['payroll_last_activity'] = time();
-
 include_once '../shared/components/PayrollSidebar.php';
 include_once '../shared/components/Breadcrumb.php';
 

@@ -48,7 +48,7 @@ $totalEmployees = $employeeRepository->getEmployeeCount();
 $presentStmt = $pdo->prepare("
     SELECT COUNT(DISTINCT employee_id) as count
     FROM attendances
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
 ");
 $presentStmt->execute([$startDateStr, $endDateStr]);
 $presentResult = $presentStmt->fetch(PDO::FETCH_OBJ);
@@ -63,7 +63,7 @@ $totalAbsent = max(0, $totalEmployees - $totalPresent);
 $lateStmt = $pdo->prepare("
     SELECT COUNT(DISTINCT id) as count
     FROM attendances
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND (
         (window = 'morning_in' AND TIME(timestamp) > '08:00:00')
         OR (window = 'afternoon_in' AND TIME(timestamp) > '14:00:00')
@@ -77,7 +77,7 @@ $totalLate = $lateResult ? (int)$lateResult->count : 0;
 $overtimeStmt = $pdo->prepare("
     SELECT COUNT(DISTINCT id) as count
     FROM attendances
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND (
         window = 'afternoon_out' AND TIME(timestamp) > '17:00:00'
         OR window = 'morning_out' AND TIME(timestamp) > '13:00:00'

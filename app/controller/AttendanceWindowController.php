@@ -89,8 +89,18 @@ class AttendanceWindowController
         $insertData = [
             'label' => $normalizedLabel,
             'start_time' => trim($data['start_time']),
-            'end_time' => trim($data['end_time'])
+            'end_time' => trim($data['end_time']),
         ];
+        $graceRes = $this->resolveLateGraceMinutes($data);
+        if (!$graceRes['ok']) {
+            return [
+                'success' => false,
+                'message' => $graceRes['message'],
+            ];
+        }
+        if (!$graceRes['missing_key']) {
+            $insertData['late_grace_minutes'] = $graceRes['value'];
+        }
         $id = $this->windowRepository->create($insertData);
 
         if ($id) {
@@ -176,11 +186,35 @@ class AttendanceWindowController
             }
         }
 
+        $existing = $this->windowRepository->findById($id);
+        $existingGrace = null;
+        if ($existing) {
+            if (is_object($existing)) {
+                $existingGrace = property_exists($existing, 'late_grace_minutes') ? $existing->late_grace_minutes : null;
+            } else {
+                $existingGrace = $existing['late_grace_minutes'] ?? null;
+            }
+            if ($existingGrace === '') {
+                $existingGrace = null;
+            } elseif ($existingGrace !== null) {
+                $existingGrace = (int) $existingGrace;
+            }
+        }
+
+        $graceRes = $this->resolveLateGraceMinutes($data);
+        if (!$graceRes['ok']) {
+            return [
+                'success' => false,
+                'message' => $graceRes['message'],
+            ];
+        }
+
         // Update the record with normalized label
         $updateData = [
             'label' => $normalizedLabel,
             'start_time' => trim($data['start_time']),
-            'end_time' => trim($data['end_time'])
+            'end_time' => trim($data['end_time']),
+            'late_grace_minutes' => $graceRes['missing_key'] ? $existingGrace : $graceRes['value'],
         ];
         $success = $this->windowRepository->update($id, $updateData);
 
@@ -226,6 +260,45 @@ class AttendanceWindowController
             "success" => false,
             "message" => "Failed to delete attendance window."
         ];
+    }
+
+    /**
+     * late_grace_minutes: optional. Absent key = preserve on update / DB default on create.
+     * null or '' = use global Settings (stored as NULL).
+     *
+     * @return array{ok:bool, missing_key:bool, value:?int, message?:string}
+     */
+    private function resolveLateGraceMinutes(array $data): array {
+        if (!array_key_exists('late_grace_minutes', $data)) {
+            return ['ok' => true, 'missing_key' => true, 'value' => null];
+        }
+        $raw = $data['late_grace_minutes'];
+        if ($raw === null || $raw === '') {
+            return ['ok' => true, 'missing_key' => false, 'value' => null];
+        }
+        if (is_string($raw) && !preg_match('/^-?\d+$/', trim($raw))) {
+            return [
+                'ok' => false,
+                'missing_key' => false,
+                'message' => 'Late grace must be empty (use global default) or a whole number of minutes (0–720).',
+            ];
+        }
+        if (!is_numeric($raw)) {
+            return [
+                'ok' => false,
+                'missing_key' => false,
+                'message' => 'Late grace must be empty (use global default) or a whole number of minutes (0–720).',
+            ];
+        }
+        $v = (int) $raw;
+        if ($v < 0 || $v > 720) {
+            return [
+                'ok' => false,
+                'missing_key' => false,
+                'message' => 'Late grace must be between 0 and 720 minutes.',
+            ];
+        }
+        return ['ok' => true, 'missing_key' => false, 'value' => $v];
     }
 
     /**

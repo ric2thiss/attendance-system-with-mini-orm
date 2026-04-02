@@ -102,11 +102,14 @@ function calculateHoursFromAttendances($attendances) {
 
 try {
     $db = (new Database())->connect();
-    
+    $delFilter = SchemaColumnCache::attendancesHasDeletedAt() ? 'a.deleted_at IS NULL AND ' : '';
+    $profDb = defined('PROFILING_DB_NAME') ? PROFILING_DB_NAME : 'profiling-system';
+    $profDbQ = '`' . str_replace('`', '``', $profDb) . '`';
+
     switch ($type) {
         case 'attendance-position':
             // Attendance - Total Hours by Position
-            // Query from both databases: profiling-system for officials and residents, attendance-system for attendance
+            // Query from both databases: profiling DB for officials and residents, attendance-system for attendance
             // Note: employee_id in attendance-system corresponds to id in profiling-system tables
             $query = "
                 SELECT 
@@ -117,9 +120,9 @@ try {
                     a.window,
                     COALESCE(ps_off.position, ps_res.occupation, 'N/A') AS position
                 FROM attendances a
-                LEFT JOIN `profiling-system`.barangay_official ps_off ON a.employee_id = ps_off.id
-                LEFT JOIN `profiling-system`.residents ps_res ON a.employee_id = ps_res.id
-                WHERE DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
+                LEFT JOIN {$profDbQ}.`barangay_official` ps_off ON a.employee_id = ps_off.id
+                LEFT JOIN {$profDbQ}.`residents` ps_res ON a.employee_id = ps_res.id
+                WHERE {$delFilter}DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
                 ORDER BY a.employee_id, DATE(COALESCE(a.timestamp, a.created_at)), a.window
             ";
             
@@ -218,8 +221,8 @@ try {
                     a.window,
                     COALESCE(ps_off.chairmanship, 'N/A') AS chairmanship
                 FROM attendances a
-                LEFT JOIN `profiling-system`.barangay_official ps_off ON a.employee_id = ps_off.id
-                WHERE DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
+                LEFT JOIN {$profDbQ}.`barangay_official` ps_off ON a.employee_id = ps_off.id
+                WHERE {$delFilter}DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
                 ORDER BY a.employee_id, DATE(COALESCE(a.timestamp, a.created_at)), a.window
             ";
             
@@ -327,9 +330,9 @@ try {
                     COALESCE(ps_off.position, ps_res.occupation, 'N/A') AS position,
                     COALESCE(ps_off.chairmanship, 'N/A') AS chairmanship
                 FROM attendances a
-                LEFT JOIN `profiling-system`.barangay_official ps_off ON a.employee_id = ps_off.id
-                LEFT JOIN `profiling-system`.residents ps_res ON a.employee_id = ps_res.id
-                WHERE DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
+                LEFT JOIN {$profDbQ}.`barangay_official` ps_off ON a.employee_id = ps_off.id
+                LEFT JOIN {$profDbQ}.`residents` ps_res ON a.employee_id = ps_res.id
+                WHERE {$delFilter}DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
                 ORDER BY a.employee_id, DATE(COALESCE(a.timestamp, a.created_at)), a.window
             ";
             
@@ -415,9 +418,9 @@ try {
                     COALESCE(ps_off.position, ps_res.occupation, 'N/A') AS position,
                     COALESCE(ps_off.chairmanship, 'N/A') AS chairmanship
                 FROM attendances a
-                LEFT JOIN `profiling-system`.barangay_official ps_off ON a.employee_id = ps_off.id
-                LEFT JOIN `profiling-system`.residents ps_res ON a.employee_id = ps_res.id
-                WHERE DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
+                LEFT JOIN {$profDbQ}.`barangay_official` ps_off ON a.employee_id = ps_off.id
+                LEFT JOIN {$profDbQ}.`residents` ps_res ON a.employee_id = ps_res.id
+                WHERE {$delFilter}DATE(COALESCE(a.timestamp, a.created_at)) BETWEEN ? AND ?
                 ORDER BY attendance_date DESC, a.employee_id, a.window
             ";
             
@@ -510,10 +513,11 @@ try {
             break;
     }
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('reports/index.php: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         "error" => "Server error",
-        "message" => $e->getMessage()
+        "message" => $e->getMessage(),
     ]);
 }

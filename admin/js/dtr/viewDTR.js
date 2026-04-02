@@ -7,16 +7,38 @@ let currentViewData = null;
 
 export function initViewDTR() {
     /**
+     * Local calendar date YYYY-MM-DD (avoid toISOString() — shifts dates in UTC+ timezones).
+     * @param {Date} date
+     * @returns {string}
+     */
+    function formatLocalDateYYYYMMDD(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    /**
      * Format time from timestamp (24-hour format for DTR)
      * @param {string|null} timestamp 
      * @returns {string}
      */
     function formatTime(timestamp) {
         if (!timestamp) return '';
-        const date = new Date(timestamp);
-        const hours = date.getHours();
-        const minutes = date.getMinutes();
-        // Format as HH:MM (24-hour format)
+        let parsed;
+        if (typeof timestamp === 'string') {
+            const s = timestamp.trim();
+            if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(s)) {
+                parsed = new Date(s.replace(' ', 'T'));
+            } else {
+                parsed = new Date(s);
+            }
+        } else {
+            parsed = new Date(timestamp);
+        }
+        if (Number.isNaN(parsed.getTime())) return '';
+        const hours = parsed.getHours();
+        const minutes = parsed.getMinutes();
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     }
 
@@ -75,7 +97,7 @@ export function initViewDTR() {
                 const date = new Date(year, month, day);
                 days.push({
                     dayNum: day,
-                    date: date.toISOString().split('T')[0]
+                    date: formatLocalDateYYYYMMDD(date),
                 });
             }
             
@@ -107,7 +129,8 @@ export function initViewDTR() {
         // Generate rows for all days in the month
         const rows = [];
         let rowsWithData = 0;
-        
+        let monthTotalMinutes = 0;
+
         allDays.forEach(({ dayNum, date }) => {
             const dayData = attendanceMap[date] || null;
 
@@ -161,6 +184,17 @@ export function initViewDTR() {
                 rowsWithData++;
             }
 
+            let underH = '';
+            let underM = '';
+            if (dayData && (morningIn || morningOut || afternoonIn || afternoonOut)) {
+                const th = dayData.total_hours;
+                const tm = dayData.total_minutes;
+                underH = th !== undefined && th !== null ? String(th) : '0';
+                underM = tm !== undefined && tm !== null ? String(tm) : '0';
+                monthTotalMinutes +=
+                    (Number(dayData.total_hours) || 0) * 60 + (Number(dayData.total_minutes) || 0);
+            }
+
             rows.push(`
                 <tr class="border-b border-gray-300">
                     <td class="px-2 py-1 text-xs text-left border-r border-gray-300">${dayNum}</td>
@@ -168,12 +202,15 @@ export function initViewDTR() {
                     <td class="px-2 py-1 text-xs text-center border-r border-gray-300">${morningOut}</td>
                     <td class="px-2 py-1 text-xs text-center border-r border-gray-300">${afternoonIn}</td>
                     <td class="px-2 py-1 text-xs text-center border-r border-gray-300">${afternoonOut}</td>
-                    <td class="px-2 py-1 text-xs text-center border-r border-gray-300"></td>
-                    <td class="px-2 py-1 text-xs text-center"></td>
+                    <td class="px-2 py-1 text-xs text-center border-r border-gray-300">${underH}</td>
+                    <td class="px-2 py-1 text-xs text-center">${underM}</td>
                 </tr>
             `);
         });
-        
+
+        const totalHoursCol = monthTotalMinutes > 0 ? String(Math.floor(monthTotalMinutes / 60)) : '';
+        const totalMinutesCol = monthTotalMinutes > 0 ? String(monthTotalMinutes % 60) : '';
+
         console.log(`Generated ${rows.length} rows, ${rowsWithData} rows have attendance data`);
 
         return `
@@ -240,13 +277,13 @@ export function initViewDTR() {
                         ${rows.join('')}
                         <!-- Total Row -->
                         <tr>
-                            <td class="px-2 py-1 text-xs text-left border border-gray-800"></td>
-                            <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
-                            <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
-                            <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
                             <td class="px-2 py-1 text-xs text-left font-bold border border-gray-800">Total</td>
                             <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
                             <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
+                            <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
+                            <td class="px-2 py-1 text-xs text-center border border-gray-800"></td>
+                            <td class="px-2 py-1 text-xs text-center font-bold border border-gray-800">${totalHoursCol}</td>
+                            <td class="px-2 py-1 text-xs text-center font-bold border border-gray-800">${totalMinutesCol}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -314,8 +351,8 @@ export function initViewDTR() {
             const now = new Date();
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            fromDate = firstDay.toISOString().split('T')[0];
-            toDate = lastDay.toISOString().split('T')[0];
+            fromDate = formatLocalDateYYYYMMDD(firstDay);
+            toDate = formatLocalDateYYYYMMDD(lastDay);
         }
         
         console.log('Using date range:', { fromDate, toDate });

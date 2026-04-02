@@ -8,8 +8,10 @@ import { initClock } from './clock.js';
 import { initSharedClock } from '../shared/clock.js';
 import { initWeather, fetchWeatherData } from './weather.js';
 import { initializeCharts } from './charts.js';
+import { initDashboardExtendedCharts } from './extendedCharts.js';
 import { initVisitorStats } from './visitorStats.js';
 import { initEmployeeStats } from './employeeStats.js';
+import { initDashboardAnalyticsModals } from './analyticsModals.js';
 import { initSidebar } from './sidebar.js';
 
 // WebSocket URL is passed from PHP via a global variable
@@ -58,10 +60,16 @@ function initDashboard() {
     }, 30 * 60 * 1000);
 
     // Initialize charts when the window loads
+    const startCharts = async () => {
+        await initializeCharts();
+        await initDashboardExtendedCharts();
+    };
     if (document.readyState === 'loading') {
-        window.addEventListener('load', initializeCharts);
+        window.addEventListener('load', () => {
+            startCharts().catch((e) => console.error(e));
+        });
     } else {
-        initializeCharts();
+        startCharts().catch((e) => console.error(e));
     }
 
     // Initialize visitor statistics
@@ -69,6 +77,9 @@ function initDashboard() {
 
     // Initialize employee statistics
     initEmployeeStats();
+
+    // Visitor / attendance metric modals (lazy-loaded analytics)
+    initDashboardAnalyticsModals();
 
     // Initialize sidebar
     initSidebar();

@@ -33,6 +33,7 @@ try {
             booking_id,
             created_at
         FROM visitor_logs
+        WHERE deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT :lim
     ");

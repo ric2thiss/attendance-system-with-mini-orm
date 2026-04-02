@@ -245,10 +245,6 @@ try {
                             Filters
                         </button>
                     </div>
-
-                    <div class="w-full sm:w-auto text-xs text-gray-500 sm:text-sm">
-                        Residents are managed in profiling-system. Create or edit them there.
-                    </div>
                 </div>
 
                 <!-- Resident Table -->
@@ -257,24 +253,19 @@ try {
                         <table class="w-full divide-y divide-gray-200">
                         <thead class="table-header">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Resident ID</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">First Name</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Middle Name</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Last Name</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Age</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Address</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">PWD</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-
                                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
-
                             </tr>
                         </thead>
 
                         <tbody>
                             <?php if (empty($residents)): ?>
                             <tr>
-                                <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                                     <p class="text-sm">No residents found.</p>
                                 </td>
                             </tr>
@@ -282,9 +273,6 @@ try {
                             <?php foreach ($residents as $resident): ?>
                                 <!-- Main Resident Row -->
                                 <tr class="bg-white hover:bg-gray-50 transition-colors">
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                        <?= htmlspecialchars($resident['resident_id'] ?? '') ?>
-                                    </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
                                         <?= htmlspecialchars($resident['first_name'] ?? '') ?>
                                     </td>
@@ -307,18 +295,6 @@ try {
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
                                         <?= ucfirst($resident['barangay'] ?? '') ?><?= isset($resident['municipality_city']) ? ', ' . ucfirst($resident['municipality_city']) : '' ?>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                        <?php
-                                            $pwdVal = $resident['is_pwd'] ?? null;
-                                            echo htmlspecialchars(($pwdVal !== null && $pwdVal !== '') ? $pwdVal : 'N/A');
-                                        ?>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                        <?php
-                                            $deceasedVal = $resident['is_deceased'] ?? null;
-                                            echo htmlspecialchars(($deceasedVal !== null && $deceasedVal !== '') ? $deceasedVal : 'N/A');
-                                        ?>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center space-x-2">

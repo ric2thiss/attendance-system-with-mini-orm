@@ -2,6 +2,8 @@
  * Toast Notification Module
  * Handles success and error toast notifications
  */
+import { speakAttendanceToast } from './attendanceSpeech.js';
+
 export class Toast {
     constructor(toastId = 'attendance-toast') {
         this.toast = document.getElementById(toastId);
@@ -10,7 +12,13 @@ export class Toast {
         this.toastIcon = this.toast?.querySelector('.toast-icon');
     }
 
-    show(title, message, type = 'success') {
+    /**
+     * @param {string} title
+     * @param {string} message
+     * @param {'success'|'error'} [type]
+     * @param {{ employeeName?: string }} [speechContext] Optional; success TTS uses title + employeeName only.
+     */
+    show(title, message, type = 'success', speechContext = null) {
         if (!this.toast) return;
 
         // Update toast classes based on type
@@ -46,6 +54,21 @@ export class Toast {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 `;
+            }
+        }
+
+        if (this.toastTitle) {
+            if (type === 'success') {
+                speakAttendanceToast({
+                    type: 'success',
+                    title: this.toastTitle.textContent,
+                    employeeName: speechContext?.employeeName,
+                });
+            } else {
+                speakAttendanceToast({
+                    type: 'error',
+                    title: this.toastTitle.textContent,
+                });
             }
         }
 

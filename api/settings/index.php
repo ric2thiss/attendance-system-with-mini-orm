@@ -24,7 +24,8 @@ try {
     requireAuth();
 
     $user = currentUser();
-    if (!$user || !hasRole('administrator')) {
+    $settingsRoles = ['administrator', 'admin', 'Administrator', 'Admin'];
+    if (!$user || !hasRole($settingsRoles)) {
         ob_clean();
         http_response_code(403);
         echo json_encode([

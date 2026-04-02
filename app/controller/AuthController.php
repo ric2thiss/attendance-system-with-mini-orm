@@ -159,6 +159,66 @@ class AuthController
     }
 
     /**
+     * Validate credentials without creating a session (re-auth for destructive actions, etc.).
+     *
+     * @return array{ok: bool, user?: array, message?: string}
+     */
+    public function authenticateWithoutSession(string $usernameOrEmail, string $password): array
+    {
+        $admin = Admin::query()
+            ->where("username", $usernameOrEmail)
+            ->first();
+
+        if (!$admin) {
+            $admin = Admin::query()
+                ->where("email", $usernameOrEmail)
+                ->first();
+        }
+
+        if ($admin) {
+            if (is_object($admin)) {
+                $admin = json_decode(json_encode($admin), true);
+            }
+
+            if (!$this->adminRepository->verifyPassword($password, $admin["password"])) {
+                return ["ok" => false, "message" => "Invalid username or password"];
+            }
+
+            if (!$admin["is_active"]) {
+                return [
+                    "ok" => false,
+                    "message" => "Your account has been locked by the administrator. Please contact support for assistance.",
+                ];
+            }
+
+            $userData = [
+                "id" => $admin["id"],
+                "username" => $admin["username"],
+                "email" => $admin["email"],
+                "full_name" => $admin["full_name"] ?? $admin["username"],
+                "role" => $admin["role"],
+                "source" => "attendance_admin",
+            ];
+
+            return ["ok" => true, "user" => $userData];
+        }
+
+        $profilingUser = $this->authenticateProfilingSystem($usernameOrEmail, $password);
+        if ($profilingUser) {
+            return ["ok" => true, "user" => $profilingUser];
+        }
+
+        return ["ok" => false, "message" => "Invalid username or password"];
+    }
+
+    public function verifyCredentials(string $usernameOrEmail, string $password): bool
+    {
+        $r = $this->authenticateWithoutSession($usernameOrEmail, $password);
+
+        return !empty($r["ok"]);
+    }
+
+    /**
      * Attempt to login with username/email and password
      * Authentication flow:
      * 1. Check attendance-system admins table
@@ -172,87 +232,67 @@ class AuthController
      */
     public function login(string $usernameOrEmail, string $password): array
     {
-        // STEP 1: Check attendance-system admins table
-        $admin = Admin::query()
-            ->where("username", $usernameOrEmail)
-            ->first();
+        $db = (new Database())->connect();
+        $loginLog = new LoginLogRepository($db);
 
-        if (!$admin) {
-            $admin = Admin::query()
-                ->where("email", $usernameOrEmail)
-                ->first();
-        }
-
-        if ($admin) {
-            // Convert object to array if needed (QueryBuilder returns objects by default)
-            if (is_object($admin)) {
-                $admin = json_decode(json_encode($admin), true);
-            }
-
-            // Verify password
-            if ($this->adminRepository->verifyPassword($password, $admin["password"])) {
-                // Check if admin account is locked (is_active = 0 means locked)
-                if (!$admin["is_active"]) {
-                    return [
-                        "success" => false,
-                        "message" => "Your account has been locked by the administrator. Please contact support for assistance."
-                    ];
-                }
-
-                // Prepare user data
-                $userData = [
-                    "id" => $admin["id"],
-                    "username" => $admin["username"],
-                    "email" => $admin["email"],
-                    "full_name" => $admin["full_name"] ?? $admin["username"],
-                    "role" => $admin["role"],
-                    "source" => "attendance_admin"
-                ];
-
-                // Set compatible session variables
-                $this->setCompatibleSessionVariables($userData);
-
-                // Update last login
-                $this->adminRepository->updateLastLogin($admin["id"]);
-
-                return [
-                    "success" => true,
-                    "message" => "Login successful",
-                    "admin" => [
-                        "id" => $userData["id"],
-                        "username" => $userData["username"],
-                        "email" => $userData["email"],
-                        "full_name" => $userData["full_name"],
-                        "role" => $userData["role"]
-                    ]
-                ];
-            }
-        }
-
-        // STEP 2-4: Check profiling-system database (admin → barangay_official → residents)
-        $profilingUser = $this->authenticateProfilingSystem($usernameOrEmail, $password);
-
-        if ($profilingUser) {
-            // Set compatible session variables
-            $this->setCompatibleSessionVariables($profilingUser);
+        $auth = $this->authenticateWithoutSession($usernameOrEmail, $password);
+        if (empty($auth["ok"])) {
+            $loginLog->insertAttempt(
+                $usernameOrEmail,
+                false,
+                $auth["message"] ?? "Invalid username or password",
+                null,
+                null
+            );
 
             return [
-                "success" => true,
-                "message" => "Login successful",
-                "admin" => [
-                    "id" => $profilingUser["id"],
-                    "username" => $profilingUser["username"],
-                    "email" => $profilingUser["email"],
-                    "full_name" => $profilingUser["full_name"],
-                    "role" => $profilingUser["role"]
-                ]
+                "success" => false,
+                "message" => $auth["message"] ?? "Invalid username or password",
             ];
         }
 
-        // No match found in any table
+        $user = $auth["user"];
+        if (!UserAccessControlSettings::isLoginAllowed($user["source"] ?? "")) {
+            $loginLog->insertAttempt(
+                $usernameOrEmail,
+                false,
+                "User type not permitted to access the system",
+                $user["source"] ?? null,
+                $user["role"] ?? null
+            );
+
+            return [
+                "success" => false,
+                "message" => "Your account type is not permitted to access this system.",
+            ];
+        }
+
+        $this->setCompatibleSessionVariables($user);
+
+        if (($user["source"] ?? "") === "attendance_admin") {
+            $this->adminRepository->updateLastLogin($user["id"]);
+        }
+
+        $loginLog->insertAttempt(
+            $usernameOrEmail,
+            true,
+            null,
+            $user["source"] ?? null,
+            $user["role"] ?? null
+        );
+
+        $_SESSION["_login_audit_logged"] = true;
+
         return [
-            "success" => false,
-            "message" => "Invalid username or password"
+            "success" => true,
+            "message" => "Login successful",
+            "admin" => [
+                "id" => $user["id"],
+                "username" => $user["username"],
+                "email" => $user["email"],
+                "full_name" => $user["full_name"],
+                "role" => $user["role"],
+            ],
         ];
     }
 
@@ -315,6 +355,41 @@ class AuthController
     }
 
     /**
+     * One row per PHP session when the user reaches a protected route without having used
+     * {@see login()} in this app (e.g. central login.php / shared session). Skipped when
+     * {@see login()} already recorded the attempt (flag set there).
+     */
+    public static function recordLoginAuditIfNeeded(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION["is_authenticated"]) || !empty($_SESSION["_login_audit_logged"])) {
+            return;
+        }
+
+        $_SESSION["_login_audit_logged"] = true;
+
+        $username = (string) ($_SESSION["admin_username"] ?? $_SESSION["username"] ?? "");
+        if ($username === "") {
+            return;
+        }
+
+        try {
+            $db = (new Database())->connect();
+            $repo = new LoginLogRepository($db);
+            $source = $_SESSION["auth_source"] ?? null;
+            if ($source === null || $source === "") {
+                $source = "portal_sso";
+            }
+            $role = $_SESSION["admin_role"] ?? $_SESSION["role"] ?? null;
+            $repo->insertAttempt($username, true, null, $source, $role);
+        } catch (Throwable $e) {
+            error_log("recordLoginAuditIfNeeded: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Require authentication (redirect if not authenticated)
      *
      * @param string $redirectTo
@@ -334,6 +409,8 @@ class AuthController
             header("Location: " . $redirectTo);
             exit;
         }
+
+        self::recordLoginAuditIfNeeded();
     }
 }
 

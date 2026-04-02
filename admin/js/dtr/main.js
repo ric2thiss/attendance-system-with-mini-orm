@@ -151,13 +151,18 @@ function initDTR() {
         }
     });
 
-    // Set default dates (current month)
+    // Set default dates (current month) using local calendar dates — not toISOString() (UTC shift in PH)
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
-    fromDate.value = firstDay.toISOString().split('T')[0];
-    toDate.value = lastDay.toISOString().split('T')[0];
+    const toYmd = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+    fromDate.value = toYmd(firstDay);
+    toDate.value = toYmd(lastDay);
 }
 
 // Initialize when DOM is ready

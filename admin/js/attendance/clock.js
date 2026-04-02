@@ -4,9 +4,6 @@
  */
 export class Clock {
     constructor() {
-        this.headerDateEl = document.getElementById('current-date');
-        this.realtimeClockEl = document.getElementById('realtime-clock');
-        this.todayDateInsightEl = document.getElementById('today-date-insight');
         this.intervalId = null;
     }
 
@@ -14,10 +11,11 @@ export class Clock {
      * Update header date
      */
     updateHeaderDate() {
-        if (!this.headerDateEl) return;
+        const headerDateEl = document.getElementById('current-date');
+        if (!headerDateEl) return;
         const now = new Date();
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        this.headerDateEl.textContent = now.toLocaleDateString('en-US', options);
+        headerDateEl.textContent = now.toLocaleDateString('en-US', options);
     }
 
     /**
@@ -25,20 +23,21 @@ export class Clock {
      */
     updateRealtimeClock() {
         const now = new Date();
-        
-        // Update clock
-        if (this.realtimeClockEl) {
+
+        const realtimeClockEl = document.getElementById('realtime-clock');
+        if (realtimeClockEl) {
             const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-            const timeParts = now.toLocaleTimeString('en-US', timeOptions).split(' ');
-            const time = timeParts[0];
-            const ampm = timeParts[1];
-            // Format: HH:MM : SS AM/PM
-            const formattedTime = time.replace(/:/g, ' : ') + ' ' + ampm;
-            this.realtimeClockEl.textContent = formattedTime;
+            const raw = now.toLocaleTimeString('en-US', timeOptions);
+            const m = raw.match(/^(.+?)\s+([AP]M)$/i);
+            if (m) {
+                realtimeClockEl.textContent = m[1].replace(/:/g, ' : ') + ' ' + m[2];
+            } else {
+                realtimeClockEl.textContent = raw;
+            }
         }
 
-        // Update today's date (Format: 28th September 2025)
-        if (this.todayDateInsightEl) {
+        const todayDateInsightEl = document.getElementById('today-date-insight');
+        if (todayDateInsightEl) {
             const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
             const day = now.getDate();
             let daySuffix;
@@ -56,7 +55,7 @@ export class Clock {
 
             const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             const dateString = day + daySuffix + ' ' + monthYear;
-            this.todayDateInsightEl.textContent = dateString;
+            todayDateInsightEl.textContent = dateString;
         }
     }
 

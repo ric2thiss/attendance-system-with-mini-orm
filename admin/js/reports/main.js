@@ -1,6 +1,7 @@
 /**
- * Reports Main Entry Point
- * Handles report generation, chart rendering, and table updates
+ * Legacy entry for the old standalone Attendance Reports page.
+ * The same UI is integrated in admin/attendance-analytics.php (section "Total hours & summaries").
+ * The reports hub is admin/reports.php.
  */
 
 import { initSidebar } from '../shared/sidebar.js';

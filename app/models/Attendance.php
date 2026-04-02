@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../app/models/Model.php';
 
 class Attendance extends Model {
     protected $table = "attendances";
-    protected $fillable = ["employee_id", "created_at", "updated_at", "window"];
+    protected $fillable = ["employee_id", "timestamp", "created_at", "updated_at", "window", "activity_id"];
 
     public function employee()
     {

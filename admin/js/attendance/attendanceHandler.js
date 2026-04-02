@@ -271,34 +271,51 @@ export class AttendanceHandler {
             const lastName = resident?.last_name || "";
             if (nameEl) nameEl.textContent = `${firstName} ${lastName}`.trim() || "Unnamed";
             
-            // Handle photo_path - it's stored as a JSON array, extract the first image
-            let photoPath = "../utils/img/logo.png"; // Default fallback
-            if (resident?.photo_path) {
+            // Handle profile photo - prefer photo_url (full URL from profiling-system) when available
+            let photoSrc = "./logo.png"; // Default fallback
+            if (resident?.photo_url && resident.photo_url.startsWith('http')) {
+                // Backend provides full URL to profiling-system/officials/uploads/officials/
+                photoSrc = resident.photo_url;
+            } else if (resident?.photo_path) {
                 try {
                     let photoPaths = resident.photo_path;
-                    
                     // Parse JSON if it's a string
                     if (typeof photoPaths === 'string') {
                         const trimmed = photoPaths.trim();
                         if (trimmed.startsWith('[')) {
                             photoPaths = JSON.parse(photoPaths);
                         } else {
-                            // It's a plain string path, use it directly
-                            photoPath = `../${photoPaths.replace(/\/+/g, '/')}`;
+                            // Plain string - build profiling-system URL if not already absolute
+                            if (trimmed.startsWith('http')) {
+                                photoSrc = trimmed;
+                            } else {
+                                const filename = trimmed.split('/').pop() || trimmed;
+                                const origin = window.location.origin;
+                                photoSrc = `${origin}/profiling-system/officials/uploads/officials/${encodeURIComponent(filename)}`;
+                            }
                         }
                     }
-                    
-                    // If it's an array, get the first image
                     if (Array.isArray(photoPaths) && photoPaths.length > 0) {
                         const firstPhoto = photoPaths[0];
-                        photoPath = `../${firstPhoto.replace(/\/+/g, '/')}`;
+                        if (typeof firstPhoto === 'string' && firstPhoto.startsWith('http')) {
+                            photoSrc = firstPhoto;
+                        } else {
+                            const filename = (firstPhoto || '').split('/').pop() || firstPhoto;
+                            const origin = window.location.origin;
+                            photoSrc = `${origin}/profiling-system/officials/uploads/officials/${encodeURIComponent(filename)}`;
+                        }
                     }
                 } catch (e) {
                     console.warn("Error parsing photo_path:", e);
-                    // Fallback to default logo on error
                 }
             }
-            if (employeePhotoEl) employeePhotoEl.src = photoPath;
+            if (employeePhotoEl) {
+                employeePhotoEl.src = photoSrc;
+                employeePhotoEl.onerror = function() {
+                    this.onerror = null;
+                    this.src = "./logo.png";
+                };
+            }
 
             // Display Attendance Window (prefer window_label if available)
             const windowText = this.getWindowText(attendance.window, attendance.window_label);
@@ -468,7 +485,7 @@ export class AttendanceHandler {
                     const lastName = lastAttendeeResident?.last_name || "";
                     const employeeName = `${firstName} ${lastName}`.trim() || lastAttendee.employee_id || "Employee";
                     const windowText = this.getWindowText(lastAttendee.window, lastAttendee.window_label);
-                    this.toast.show("Attendance Logged Successfully", `${employeeName} - ${windowText}`, 'success');
+                    this.toast.show("Attendance Logged Successfully", `${employeeName} - ${windowText}`, 'success', { employeeName });
 
                     // Mark as processed
                     this.processedAttendanceIds.add(currentAttendanceId);

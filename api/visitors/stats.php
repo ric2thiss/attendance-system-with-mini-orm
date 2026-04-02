@@ -43,6 +43,7 @@ $pdo = (new Database())->connect();
 
 // Total visitors in date range
 $totalVisitors = VisitorLog::query()
+    ->whereRaw('(deleted_at IS NULL)')
     ->whereBetween('created_at', [$startDateStr, $endDateStr])
     ->count();
 
@@ -50,7 +51,7 @@ $totalVisitors = VisitorLog::query()
 $stmt = $pdo->prepare("
     SELECT COUNT(*) as count
     FROM visitor_logs
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND is_resident = 1
 ");
 $stmt->execute([$startDateStr, $endDateStr]);
@@ -61,7 +62,7 @@ $totalResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
 $stmt = $pdo->prepare("
     SELECT COUNT(*) as count
     FROM visitor_logs
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND is_resident = 0
 ");
 $stmt->execute([$startDateStr, $endDateStr]);
@@ -72,7 +73,7 @@ $totalNonResidentVisitors = $result ? (int)($result['count'] ?? 0) : 0;
 $onlineStmt = $pdo->prepare("
     SELECT COUNT(*) as count
     FROM visitor_logs
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND had_booking = 1
 ");
 $onlineStmt->execute([$startDateStr, $endDateStr]);
@@ -83,7 +84,7 @@ $totalOnlineAppointment = $onlineResult ? (int)($onlineResult['count'] ?? 0) : 0
 $walkinStmt = $pdo->prepare("
     SELECT COUNT(*) as count
     FROM visitor_logs
-    WHERE created_at >= ? AND created_at <= ?
+    WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
     AND had_booking = 0
 ");
 $walkinStmt->execute([$startDateStr, $endDateStr]);

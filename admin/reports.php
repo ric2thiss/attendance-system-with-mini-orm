@@ -1,146 +1,90 @@
 <?php
-require_once __DIR__ . "/../bootstrap.php";
-require_once __DIR__ . "/../auth/helpers.php";
-requireAuth(); // Require authentication - redirects to login if not authenticated
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../auth/helpers.php';
+requireAuth();
 
-include_once '../shared/components/Sidebar.php';
-include_once '../shared/components/Breadcrumb.php';
+include_once __DIR__ . '/../shared/components/Sidebar.php';
+include_once __DIR__ . '/../shared/components/Breadcrumb.php';
 
-// Get current user for greeting
 $currentUser = currentUser();
 $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 
-// Get date range parameters (default to current month)
-$fromDate = isset($_GET['from']) ? trim($_GET['from']) : date('Y-m-01');
-$toDate = isset($_GET['to']) ? trim($_GET['to']) : date('Y-m-t');
-$reportType = isset($_GET['type']) ? trim($_GET['type']) : 'attendance-position';
-
+$logoUrl = rtrim(BASE_URL, '/') . '/utils/img/logo.png';
+$aa = 'attendance-analytics.php';
+$vl = 'visitor-lists.php';
+$va = 'visitor-analytics.php';
+$dtr = 'dtr.php';
+$pay = 'payroll.php';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Reports</title>
+    <title>Reports</title>
     <link rel="stylesheet" href="../utils/styles/global.css">
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load D3.js for Charting -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        /* Prevent body horizontal scroll */
-        body {
-            overflow-x: hidden;
-        }
-    </style>
+    <style>body { overflow-x: hidden; }</style>
 </head>
 <body>
-
-    <!-- Main Container -->
     <div class="flex min-h-screen">
+        <?= Sidebar('Reports', null, $logoUrl) ?>
 
-        <?=Sidebar("Attendance Reports", null)?>
-
-        <!-- 2. MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
-
-            <!-- Top Header Bar -->
-            <header class="mb-6">
-                <div class="flex justify-between items-center mb-1">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-800">Attendance Reports</h1>
-                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?></p>
-                    </div>
-                    <div>
-                        <button id="exportReportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
-                            <svg class="w-5 h-5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Export Report
-                        </button>
-                    </div>
-                </div>
+            <header class="mb-8">
+                <h1 class="text-2xl font-semibold text-gray-800">Reports</h1>
+                <p class="text-gray-500 text-sm mt-1"><?= htmlspecialchars(getGreeting($userName), ENT_QUOTES, 'UTF-8') ?> — Open the report or export you need. Attendance hours charts and CSV export live under Attendance Analytics.</p>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],
-                    ['label' => 'Attendance Reports', 'link' => 'reports.php']
+                    ['label' => 'Reports', 'link' => 'reports.php'],
                 ]); ?>
             </header>
 
-            <!-- REPORT FILTERS AND CONTROLS -->
-            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-8 flex flex-col md:flex-row gap-4 items-end">
-                
-                <!-- Report Type Dropdown -->
-                <div class="w-full md:w-1/3">
-                    <label for="reportType" class="block text-sm font-medium text-gray-700 mb-1">Select Report Type</label>
-                    <select id="reportType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                        <option value="attendance-position" <?= $reportType === 'attendance-position' ? 'selected' : '' ?>>Attendance – Total Hours by Position</option>
-                        <option value="attendance-chairmanship" <?= $reportType === 'attendance-chairmanship' ? 'selected' : '' ?>>Attendance – Total Hours by Chairmanship</option>
-                        <option value="attendance-employee" <?= $reportType === 'attendance-employee' ? 'selected' : '' ?>>Attendance – Total Hours by Employee</option>
-                        <option value="attendance-daily" <?= $reportType === 'attendance-daily' ? 'selected' : '' ?>>Attendance – Daily Attendance Summary</option>
-                    </select>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                <a href="attendance-reports.php" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Attendance Reports (print &amp; fines)</h2>
+                    <p class="text-sm text-gray-600 mt-2">Event roster, absent fines, CSV / Word export, and PDF. Separate from live attendance screen.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
 
-                <!-- Date Range (Start) -->
-                <div class="w-full md:w-1/4">
-                    <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <input type="date" id="startDate" value="<?= htmlspecialchars($fromDate) ?>" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                </div>
+                <a href="<?= htmlspecialchars($aa, ENT_QUOTES, 'UTF-8') ?>#hours-reports" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Attendance — hours &amp; summaries</h2>
+                    <p class="text-sm text-gray-600 mt-2">Total hours by position, chairmanship, or employee; daily summary table; CSV export (D3 bar chart). Same data as the former standalone attendance reports page.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open in Attendance Analytics →</span>
+                </a>
 
-                <!-- Date Range (End) -->
-                <div class="w-full md:w-1/4">
-                    <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <input type="date" id="endDate" value="<?= htmlspecialchars($toDate) ?>" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                </div>
+                <a href="<?= htmlspecialchars($aa, ENT_QUOTES, 'UTF-8') ?>" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Attendance Analytics</h2>
+                    <p class="text-sm text-gray-600 mt-2">Compliance, perfect attendance, needs-attention drill-downs, Chart.js dashboards, master-list window table, and gap fill.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
 
-                <!-- Run Report Button -->
-                <div class="w-full md:w-1/6">
-                    <button id="runReportBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
-                        Run Report
-                    </button>
-                </div>
+                <a href="<?= htmlspecialchars($vl, ENT_QUOTES, 'UTF-8') ?>" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Visitor reports</h2>
+                    <p class="text-sm text-gray-600 mt-2">Visitor logs listing, filters, and printable-style views.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
+
+                <a href="<?= htmlspecialchars($va, ENT_QUOTES, 'UTF-8') ?>" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Visitor Analytics</h2>
+                    <p class="text-sm text-gray-600 mt-2">Visitor traffic charts and analytics dashboard.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
+
+                <a href="<?= htmlspecialchars($dtr, ENT_QUOTES, 'UTF-8') ?>" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">DTR</h2>
+                    <p class="text-sm text-gray-600 mt-2">Daily time records and related views for officials.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
+
+                <a href="<?= htmlspecialchars($pay, ENT_QUOTES, 'UTF-8') ?>" class="block bg-white rounded-xl border border-gray-100 shadow p-6 hover:border-blue-200 hover:shadow-md transition-all">
+                    <h2 class="text-lg font-semibold text-gray-800">Payroll</h2>
+                    <p class="text-sm text-gray-600 mt-2">Payroll period reports and exports where configured.</p>
+                    <span class="inline-block mt-4 text-sm font-medium text-blue-600">Open →</span>
+                </a>
             </div>
-
-            <!-- Loading Indicator -->
-            <div id="loadingIndicator" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-8 text-center hidden">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p class="mt-2 text-gray-600">Loading report data...</p>
-            </div>
-
-            <!-- CHART VISUALIZATION SECTION -->
-            <div id="chartSection" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-8">
-                <h2 id="chartTitle" class="text-xl font-semibold text-gray-800 mb-4">Report Data</h2>
-                <div id="chartContainer" class="w-full overflow-x-auto">
-                    <!-- D3 Chart will be rendered here -->
-                </div>
-            </div>
-
-            <!-- RAW DATA TABLE SECTION -->
-            <div id="tableSection" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Detailed Report Data</h2>
-
-                <!-- Table Header -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr id="tableHeader">
-                                <!-- Headers will be populated by JavaScript -->
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                                    <p class="text-sm">Select a report type and click "Run Report" to view data.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </main>
     </div>
-
-    <!-- JavaScript Module for Reports -->
-    <script type="module" src="js/reports/main.js"></script>
-
+    <script type="module" src="js/reports/hub.js"></script>
 </body>
 </html>

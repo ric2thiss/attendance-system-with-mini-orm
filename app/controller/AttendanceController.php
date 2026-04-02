@@ -6,6 +6,7 @@ class AttendanceController {
     protected $residentRepository;
     protected $windowRepository;
     protected $fingerprintsRepository;
+    protected $activityRepository;
     protected $profilingDbName;
 
     public function __construct()
@@ -15,6 +16,7 @@ class AttendanceController {
         $this->residentRepository = new ResidentRepository($this->db);
         $this->windowRepository = new AttendanceWindowRepository($this->db);
         $this->fingerprintsRepository = new FingerprintsRepository($this->db);
+        $this->activityRepository = new ActivityRepository($this->db);
         $this->profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
     }
     // public function index()
@@ -66,7 +68,8 @@ class AttendanceController {
                         bo.surname AS last_name,
                         bo.chairmanship AS department_name,
                         bo.position AS position_name,
-                        bo.status AS activity_name
+                        bo.status AS activity_name,
+                        bo.image_path
                     FROM `{$this->profilingDbName}`.`barangay_official` AS bo
                     WHERE bo.id = ?
                     LIMIT 1
@@ -83,12 +86,24 @@ class AttendanceController {
                 "department_name" => $official['department_name'] ?? null,
             ];
 
+            // Build profile photo URL for officials (profiling-system/officials/uploads/officials/)
+            $photoUrl = null;
+            if ($official && !empty($official['image_path'])) {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $origin = $scheme . '://' . $host;
+                $filename = basename(trim($official['image_path']));
+                $photoUrl = $origin . '/profiling-system/officials/uploads/officials/' . rawurlencode($filename);
+            }
+
             $resident = $official ? [
                 "resident_id" => null,
                 "first_name" => $official['first_name'] ?? null,
                 "middle_name" => $official['middle_name'] ?? null,
                 "last_name" => $official['last_name'] ?? null,
                 "suffix" => null,
+                "photo_path" => $official['image_path'] ?? null,
+                "photo_url" => $photoUrl,
             ] : null;
             
             // Get the corresponding attendance (in/out pair) for the same date
@@ -214,6 +229,32 @@ class AttendanceController {
             return;
         }
 
+        // Optional activity/event tag: explicit in request, else default from admin setting (biometric client)
+        $resolvedActivityId = null;
+        if (array_key_exists("activity_id", $data) && $data["activity_id"] !== null && $data["activity_id"] !== "") {
+            $aid = (int) $data["activity_id"];
+            if ($aid > 0) {
+                if (!$this->activityRepository->existsById($aid)) {
+                    http_response_code(422);
+                    echo json_encode([
+                        "success" => false,
+                        "error"   => "Invalid activity_id",
+                    ]);
+                    return;
+                }
+                $resolvedActivityId = $aid;
+            }
+        } else {
+            $activeRaw = Settings::getValue("active_attendance_activity_id", "");
+            if ($activeRaw !== "" && ctype_digit((string) $activeRaw)) {
+                $aid = (int) $activeRaw;
+                if ($aid > 0 && $this->activityRepository->existsById($aid)) {
+                    $resolvedActivityId = $aid;
+                }
+            }
+        }
+        $data["activity_id"] = $resolvedActivityId;
+
         // 5. Save attendance (window is already normalized to lowercase)
         try {
             $saved = $this->attendanceRepository->create($data);
@@ -273,9 +314,17 @@ class AttendanceController {
         }
     }
 
-    function now($format = "Y-m-d H:i:s", $timezone = "Asia/Manila")
+    function now($format = "Y-m-d H:i:s", $timezone = null)
     {
-        $dt = new DateTime("now", new DateTimeZone($timezone));
+        if ($timezone === null || $timezone === '') {
+            $timezone = @date_default_timezone_get() ?: "Asia/Manila";
+        }
+        try {
+            $tz = new DateTimeZone($timezone);
+        } catch (Exception $e) {
+            $tz = new DateTimeZone("Asia/Manila");
+        }
+        $dt = new DateTime("now", $tz);
         return $dt->format($format);
     }
 
@@ -294,9 +343,9 @@ class AttendanceController {
      * @param string|null $toDate Filter to date (optional)
      * @return array
      */
-    public function getPaginatedAttendances($page = 1, $perPage = 10, $searchQuery = '', $fromDate = null, $toDate = null)
+    public function getPaginatedAttendances($page = 1, $perPage = 10, $searchQuery = '', $fromDate = null, $toDate = null, $activityFilter = null)
     {
-        return $this->attendanceRepository->getPaginated($page, $perPage, $searchQuery, $fromDate, $toDate);
+        return $this->attendanceRepository->getPaginated($page, $perPage, $searchQuery, $fromDate, $toDate, $activityFilter);
     }
 
 

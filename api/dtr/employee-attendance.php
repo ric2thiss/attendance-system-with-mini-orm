@@ -79,7 +79,7 @@ if ($method === "GET") {
                 COALESCE(aw.label, a.window) AS window_label
             FROM attendances a
             LEFT JOIN attendance_windows aw ON LOWER(TRIM(a.window)) = LOWER(TRIM(aw.label))
-            WHERE a.employee_id = ?
+            WHERE a.deleted_at IS NULL AND a.employee_id = ?
             $dateFilter
             ORDER BY a.timestamp ASC
         ");

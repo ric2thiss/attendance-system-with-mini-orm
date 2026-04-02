@@ -50,6 +50,7 @@ export class TableRenderer {
 
         // Get window text (prefer window_label if available)
         const windowText = this.getWindowText(attendance.window, attendance.window_label);
+        const activityLabel = attendance.activity_name ? String(attendance.activity_name) : "—";
 
         // Create new row with data attribute for duplicate detection
         const newRow = document.createElement("tr");
@@ -62,6 +63,7 @@ export class TableRenderer {
             <td class="px-3 py-3 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${windowText}</span>
             </td>
+            <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-600">${activityLabel}</td>
         `;
 
         // Check if row already exists (prevent duplicates)

@@ -75,7 +75,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 
     <div class="flex min-h-screen">
 
-        <?=Sidebar("Visitors", null)?>
+        <?=Sidebar("Visitor Logging", null)?>
 
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
 
@@ -97,7 +97,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 </div>
                 <?php Breadcrumb([
                     ['label' => 'Dashboard', 'link' => 'dashboard.php'],
-                    ['label' => 'Visitors', 'link' => 'visitors.php']
+                    ['label' => 'Visitor Logging', 'link' => 'visitors.php']
                 ]); ?>
             </header>
 

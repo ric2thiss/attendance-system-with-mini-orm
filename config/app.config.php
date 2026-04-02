@@ -87,6 +87,8 @@ define("API_ENDPOINT_EMPLOYEES", API_BASE_URL . "/employees/index.php");
 define("API_ENDPOINT_EMPLOYEES_STORE", API_BASE_URL . "/employees/store.php");
 define("API_ENDPOINT_ATTENDANCE_STATS", API_BASE_URL . "/attendance/stats.php");
 define("API_ENDPOINT_ATTENDANCE_BETWEEN", API_BASE_URL . "/attendance/between.php");
+define("API_ENDPOINT_ACTIVITIES_OPTIONS", API_BASE_URL . "/activities/options.php");
+define("API_ENDPOINT_ACTIVITIES_ACTIVE", API_BASE_URL . "/activities/active.php");
 define("API_ENDPOINT_RESIDENTS", API_BASE_URL . "/residents/index.php");
 define("API_ENDPOINT_RESIDENTS_SHOW", API_BASE_URL . "/residents/show.php");
 define("API_ENDPOINT_RESIDENTS_DELETE", API_BASE_URL . "/residents/delete.php");
@@ -122,6 +124,24 @@ if (!defined("DB_HOST")) {
 // External profiling system database (read-only for attendance-system)
 if (!defined("PROFILING_DB_NAME")) {
     define("PROFILING_DB_NAME", "profiling-system");
+}
+
+// LGUMS scheduling database (read-only; schedule_events). Same MySQL server as attendance-system.
+if (!defined("LGUMS_DB_NAME")) {
+    define("LGUMS_DB_NAME", "lgums");
+}
+// Adjust these if your lgums.schedule_events columns differ.
+if (!defined("LGUMS_SCHEDULE_EVENTS_TABLE")) {
+    define("LGUMS_SCHEDULE_EVENTS_TABLE", "schedule_events");
+}
+if (!defined("LGUMS_SCHEDULE_EVENT_ID_COL")) {
+    define("LGUMS_SCHEDULE_EVENT_ID_COL", "id");
+}
+if (!defined("LGUMS_SCHEDULE_EVENT_NAME_COL")) {
+    define("LGUMS_SCHEDULE_EVENT_NAME_COL", "title");
+}
+if (!defined("LGUMS_SCHEDULE_EVENT_DATE_COL")) {
+    define("LGUMS_SCHEDULE_EVENT_DATE_COL", "event_date");
 }
 
 // Application Settings

@@ -61,7 +61,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT employee_id) as count
             FROM attendances
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$hourStart, $hourEnd]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -85,7 +85,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT employee_id) as count
             FROM attendances
-            WHERE DATE(created_at) = DATE(?)
+            WHERE deleted_at IS NULL AND DATE(created_at) = DATE(?)
         ");
         $stmt->execute([$dayStart]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -119,7 +119,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT employee_id) as count
             FROM attendances
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$weekStartStr, $weekEndStr]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -157,7 +157,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT employee_id) as count
             FROM attendances
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$monthStartStr, $monthEndStr]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);

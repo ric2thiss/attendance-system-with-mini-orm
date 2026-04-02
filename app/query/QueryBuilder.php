@@ -138,6 +138,14 @@ class QueryBuilder {
         return $this;
     }
 
+    /**
+     * Full ORDER BY clause without additional keywords (e.g. "a.created_at DESC, a.id DESC").
+     */
+    public function orderByRaw(string $sql) {
+        $this->orderBy = "ORDER BY " . $sql;
+        return $this;
+    }
+
     public function groupBy(...$columns) {
         $this->groupBy = "GROUP BY " . implode(", ", $columns);
         return $this;

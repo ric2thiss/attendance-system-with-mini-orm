@@ -5,6 +5,7 @@ requireAuth();
 
 include_once '../shared/components/Sidebar.php';
 include_once '../shared/components/Breadcrumb.php';
+include_once '../shared/components/HelpPopover.php';
 
 // Get current user for greeting
 $currentUser = currentUser();
@@ -126,13 +127,28 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                                 Attendance Windows
                             </span>
                         </button>
+                        <button type="button" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500" data-tab="late-thresholds" id="tab-late-thresholds">
+                            <span class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Late thresholds
+                            </span>
+                        </button>
                     </nav>
                 </div>
 
                 <!-- Tab Content: Attendance Windows -->
                 <div class="tab-content" id="content-attendance-windows">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-800">Attendance Windows</h2>
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 flex-wrap">
+                            Attendance Windows
+                            <?= help_popover(
+                                'Attendance windows',
+                                'Master list of attendance windows (label, start time, end time). These labels are used when recording logs and when evaluating late, undertime, and complete-day rules in analytics.',
+                                'ml-windows'
+                            ) ?>
+                        </h2>
                         <button onclick="openModal('attendance-windows', null)" class="px-6 py-2 text-white font-semibold rounded-lg btn-primary shadow-md flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Add Window
@@ -151,6 +167,35 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                             </thead>
                             <tbody id="attendance-windows-table" class="bg-white divide-y divide-gray-200">
                                 <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Per-window late grace (clock-in threshold after official start) -->
+                <div class="tab-content hidden" id="content-late-thresholds">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 flex-wrap">
+                            Late thresholds per window
+                            <?= help_popover(
+                                'Late thresholds per window',
+                                'For each clock-in window (labels ending in _in), set how many minutes after the window start time still count as on time. Example: start 8:00 AM with 30 minutes here allows check-in until 8:30 AM; 8:31 AM is late. Leave empty to use the global default from Settings (attendance_late_grace_minutes, usually 15).',
+                                'ml-late'
+                            ) ?>
+                        </h2>
+                    </div>
+                    <div class="table-container rounded-lg border border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Label</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Start time</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Extra minutes (grace)</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="late-thresholds-table" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -218,6 +263,8 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         const API_BASE = '../api/master-lists/';
         let currentTab = 'attendance-windows';
         let deleteItem = { type: null, id: null };
+        /** @type {Record<string, { label: string, start_time: string, end_time: string }>} */
+        let lateThresholdCache = {};
 
         const tabConfig = {
             'attendance-windows': {
@@ -225,6 +272,13 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                 nameField: 'label',
                 label: 'Window Label',
                 title: 'Attendance Window',
+                isSimple: false
+            },
+            'late-thresholds': {
+                endpoint: 'attendance-windows.php',
+                nameField: 'label',
+                label: 'Window Label',
+                title: 'Late threshold',
                 isSimple: false
             }
         };
@@ -255,7 +309,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         // Load data
         async function loadData(type) {
             const config = tabConfig[type];
-            const tableBody = document.getElementById(`${type}-table`);
+            const tableBody = document.getElementById(`${type === 'late-thresholds' ? 'late-thresholds' : type}-table`);
             
             try {
                 const response = await fetch(`${API_BASE}${config.endpoint}`);
@@ -265,8 +319,49 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                     const items = Array.isArray(result.data) ? result.data : [result.data];
                     
                     if (items.length === 0) {
-                        const colspan = type === 'attendance-windows' ? '5' : '3';
+                        const colspan = type === 'attendance-windows' ? '5' : (type === 'late-thresholds' ? '4' : '3');
                         tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-gray-500">No items found. Click "Add" to create one.</td></tr>`;
+                        return;
+                    }
+
+                    if (type === 'late-thresholds') {
+                        lateThresholdCache = {};
+                        tableBody.innerHTML = items.map((item) => {
+                            const id = isObject(item) ? (item.window_id ?? item.id) : (item.window_id ?? item.id);
+                            const label = isObject(item) ? item.label : item.label;
+                            const startTime = isObject(item) ? item.start_time : item.start_time;
+                            const endTime = isObject(item) ? item.end_time : item.end_time;
+                            const rawGrace = isObject(item) ? item.late_grace_minutes : item.late_grace_minutes;
+                            const graceVal = rawGrace !== null && rawGrace !== undefined && rawGrace !== '' ? String(rawGrace) : '';
+                            lateThresholdCache[String(id)] = {
+                                label: String(label),
+                                start_time: normalizeTimeForApi(startTime),
+                                end_time: normalizeTimeForApi(endTime),
+                            };
+                            const isInWindow = /_in$/i.test(String(label).replace(/\s+/g, '_').replace(/-/g, '_'));
+                            const hint = isInWindow
+                                ? ''
+                                : '<p class="text-xs text-amber-700 mt-1">This label is not an <code>_in</code> window; late threshold applies only to clock-in windows in analytics.</p>';
+                            return `
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${escapeHtml(String(label))}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${escapeHtml(String(startTime || ''))}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        <input type="number" id="late-grace-${id}" min="0" max="720" step="1" placeholder="Global default"
+                                            value="${graceVal ? escapeHtml(graceVal) : ''}"
+                                            class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                                        <span class="text-xs text-gray-500 block mt-1">0–720 min after start, or empty = global</span>
+                                        ${hint}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <button type="button" onclick="saveLateThreshold(${id})"
+                                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                            Save
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
                         return;
                     }
 
@@ -304,11 +399,65 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         }).join('');
                     }
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>`;
+                    const colspan = type === 'late-thresholds' ? '4' : '5';
+                    tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-gray-500">Error loading data.</td></tr>`;
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>`;
+                const colspan = type === 'late-thresholds' ? '4' : '5';
+                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="px-6 py-4 text-center text-red-500">Error loading data.</td></tr>`;
+            }
+        }
+
+        /** HH:MM or HH:MM:SS → HH:MM:SS for API */
+        function normalizeTimeForApi(t) {
+            if (!t) return '00:00:00';
+            const s = String(t).trim();
+            if (s.length === 5 && s.indexOf(':') === 2) return s + ':00';
+            return s;
+        }
+
+        async function saveLateThreshold(windowId) {
+            const c = lateThresholdCache[String(windowId)];
+            if (!c) {
+                showMessage('Could not find window data. Reload the tab.', false);
+                return;
+            }
+            const input = document.getElementById(`late-grace-${windowId}`);
+            const raw = input ? input.value.trim() : '';
+            let lateGrace = null;
+            if (raw !== '') {
+                const n = parseInt(raw, 10);
+                if (Number.isNaN(n) || n < 0 || n > 720) {
+                    showMessage('Enter a whole number from 0 to 720, or leave empty for global default.', false);
+                    return;
+                }
+                lateGrace = n;
+            }
+            const url = `${API_BASE}attendance-windows.php`;
+            const body = {
+                id: windowId,
+                label: c.label,
+                start_time: c.start_time,
+                end_time: c.end_time,
+                late_grace_minutes: lateGrace,
+            };
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(result.message || 'Saved.', true);
+                    loadData('late-thresholds');
+                } else {
+                    showMessage(result.message || 'Save failed.', false);
+                }
+            } catch (e) {
+                console.error(e);
+                showMessage('An error occurred. Please try again.', false);
             }
         }
 

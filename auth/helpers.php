@@ -46,7 +46,8 @@ function requireAuth(?string $redirectTo = null): void
         $user = currentUser();
         $role = $user["role"] ?? null;
 
-        if ($role !== "administrator" && class_exists("Settings") && Settings::isMaintenanceMode()) {
+        $maintenanceExempt = class_exists("MaintenanceAccess") && MaintenanceAccess::isExempt($role);
+        if (!$maintenanceExempt && class_exists("Settings") && Settings::isMaintenanceMode()) {
             $message = Settings::getValue(
                 "maintenance_message",
                 "The system is currently under maintenance. Please try again later."

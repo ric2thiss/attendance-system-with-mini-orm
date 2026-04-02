@@ -56,7 +56,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
             FROM visitor_logs
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$hourStart, $hourEnd]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -76,7 +76,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
             FROM visitor_logs
-            WHERE DATE(created_at) = ?
+            WHERE deleted_at IS NULL AND DATE(created_at) = ?
         ");
         $stmt->execute([$dayStart]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -106,7 +106,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
             FROM visitor_logs
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$weekStartStr, $weekEndStr]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
@@ -140,7 +140,7 @@ if ($filter === 'today') {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) as count
             FROM visitor_logs
-            WHERE created_at >= ? AND created_at <= ?
+            WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?
         ");
         $stmt->execute([$monthStartStr, $monthEndStr]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);

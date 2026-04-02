@@ -1,8 +1,6 @@
 /**
  * Payroll Page Main Entry Point
  * Initializes all modules for the payroll page
- * 
- * Note: Password confirmation is handled by payroll-confirm.php before this page loads.
  */
 import { PayrunProcessor } from './payrunProcessor.js';
 import { CardUpdater } from './cardUpdater.js';

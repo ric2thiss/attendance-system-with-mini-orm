@@ -137,6 +137,42 @@ class VisitorLogController {
     }
 
     /**
+     * Visitor Reports: paginated rows with demographics join + summary stats (READ-ONLY).
+     *
+     * @param array $filters date_from, date_to (Y-m-d H:i:s), optional search, purpose, gender, purok
+     */
+    public function indexForReports(array $filters, int $limit, int $offset, string $sortDir = 'DESC'): array {
+        try {
+            $logs = $this->visitorLogRepository->getLogsForReports($filters, $limit, $offset, $sortDir);
+            $count = $this->visitorLogRepository->getCountForReports($filters);
+            $uniqueVisitors = $this->visitorLogRepository->getUniqueVisitorsCountForReports($filters);
+
+            $dateFrom = $filters['date_from'] ?? '';
+            $dateTo = $filters['date_to'] ?? '';
+            $filterOptions = $this->visitorLogRepository->getReportFilterOptions($dateFrom, $dateTo);
+
+            return [
+                'success' => true,
+                'data' => $logs,
+                'count' => $count,
+                'summary' => [
+                    'total_records' => $count,
+                    'unique_visitors' => $uniqueVisitors,
+                    'date_from' => substr((string) $dateFrom, 0, 10),
+                    'date_to' => substr((string) $dateTo, 0, 10),
+                ],
+                'filter_options' => $filterOptions,
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to fetch visitor reports',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Get statistics for visitor logs
      * 
      * @param string $dateFrom Start date (Y-m-d H:i:s)

@@ -1,6 +1,12 @@
 <?php
 
 require_once __DIR__ . "/autoloader.php";
+
+$composerAutoload = __DIR__ . "/vendor/autoload.php";
+if (is_readable($composerAutoload)) {
+    require_once $composerAutoload;
+}
+
 require_once __DIR__ . "/config/app.config.php"; // Load application configuration
 
 // Polyfills for PHP 7 compatibility (string helper functions)
@@ -27,7 +33,8 @@ if (!function_exists('str_starts_with')) {
 $pdo = (new Database())->connect();
 Model::setConnection($pdo);
 
-date_default_timezone_set("Asia/Manila");
+SystemRuntimeSettings::apply();
+SoftDeletedLogsPurge::run($pdo);
 
 // API_KEY is now defined in app.config.php, but keep for backwards compatibility
 if (!defined("API_KEY")) {

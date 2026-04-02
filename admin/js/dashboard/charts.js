@@ -24,31 +24,27 @@ export async function initializeEmployeeAttendanceChart(filterType = 'month') {
     }
 
     employeeAttendanceChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: chartData.labels,
             datasets: [
                 {
                     label: 'Present',
                     data: chartData.presentData,
-                    borderColor: '#3b82f6', // Blue
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
+                    backgroundColor: 'rgba(59, 130, 246, 0.78)',
+                    borderColor: '#2563eb',
+                    borderWidth: 1,
+                    borderRadius: 4,
                 },
                 {
                     label: 'Absent',
                     data: chartData.absentData,
-                    borderColor: '#ef4444', // Red
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }
-            ]
+                    backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                    borderColor: '#dc2626',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
         },
         options: {
             responsive: true,
@@ -58,33 +54,33 @@ export async function initializeEmployeeAttendanceChart(filterType = 'month') {
                     position: 'top',
                     labels: {
                         usePointStyle: true,
-                        padding: 15
-                    }
+                        padding: 15,
+                    },
                 },
                 tooltip: {
                     mode: 'index',
-                    intersect: false
-                }
+                    intersect: false,
+                },
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        precision: 0
-                    }
+                        precision: 0,
+                    },
                 },
                 x: {
                     grid: {
-                        display: false
-                    }
-                }
+                        display: false,
+                    },
+                },
             },
             interaction: {
-                mode: 'nearest',
+                mode: 'index',
                 axis: 'x',
-                intersect: false
-            }
-        }
+                intersect: false,
+            },
+        },
     });
 }
 
@@ -104,21 +100,19 @@ export async function initializeVisitorTrafficChart(filterType = 'month') {
     }
 
     visitorTrafficChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: chartData.labels,
             datasets: [
                 {
                     label: 'Total Visitors',
                     data: chartData.visitorData,
-                    borderColor: '#22c55e', // Green
-                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }
-            ]
+                    backgroundColor: 'rgba(34, 197, 94, 0.78)',
+                    borderColor: '#16a34a',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
         },
         options: {
             responsive: true,
@@ -128,33 +122,33 @@ export async function initializeVisitorTrafficChart(filterType = 'month') {
                     position: 'top',
                     labels: {
                         usePointStyle: true,
-                        padding: 15
-                    }
+                        padding: 15,
+                    },
                 },
                 tooltip: {
                     mode: 'index',
-                    intersect: false
-                }
+                    intersect: false,
+                },
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        precision: 0
-                    }
+                        precision: 0,
+                    },
                 },
                 x: {
                     grid: {
-                        display: false
-                    }
-                }
+                        display: false,
+                    },
+                },
             },
             interaction: {
-                mode: 'nearest',
+                mode: 'index',
                 axis: 'x',
-                intersect: false
-            }
-        }
+                intersect: false,
+            },
+        },
     });
 }
 

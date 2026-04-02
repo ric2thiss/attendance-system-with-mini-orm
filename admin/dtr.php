@@ -27,7 +27,7 @@ try {
         FROM (
             SELECT DISTINCT employee_id FROM employee_fingerprints
             UNION
-            SELECT DISTINCT employee_id FROM attendances
+            SELECT DISTINCT employee_id FROM attendances WHERE deleted_at IS NULL
         ) AS t
         LEFT JOIN `{$profilingDbName}`.`barangay_official` AS bo
             ON CAST(t.employee_id AS CHAR) = CAST(bo.id AS CHAR)

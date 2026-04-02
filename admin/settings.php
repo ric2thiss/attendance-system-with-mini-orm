@@ -2,7 +2,7 @@
 require_once __DIR__ . "/../bootstrap.php";
 require_once __DIR__ . "/../auth/helpers.php";
 requireAuth(); // Require authentication
-requireRole('administrator'); // Only administrators can access settings
+requireRole(['administrator', 'admin', 'Administrator', 'Admin']); // Only administrators can access settings
 
 include_once '../shared/components/Sidebar.php';
 include_once '../shared/components/Breadcrumb.php';
@@ -10,6 +10,22 @@ include_once '../shared/components/Breadcrumb.php';
 // Get current user for greeting
 $currentUser = currentUser();
 $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
+
+$timezoneIdentifiers = DateTimeZone::listIdentifiers();
+natcasesort($timezoneIdentifiers);
+$timezoneIdentifiers = array_values($timezoneIdentifiers);
+
+$systemDbName = '—';
+$systemMysqlVer = '—';
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $systemDbName = (string) $pdo->query('SELECT DATABASE()')->fetchColumn();
+        $systemMysqlVer = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
+    } catch (Throwable $e) {
+        // leave placeholders
+    }
+}
+$systemPhpVer = PHP_VERSION;
 
 ?>
 <!DOCTYPE html>
@@ -24,10 +40,19 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         body {
             overflow-x: hidden;
         }
+        /* Tab nav: underline only (no bullet/radio-style markers) */
+        .settings-tab {
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px; /* sit flush on the nav container bottom rule */
+            transition: color 0.15s ease, border-bottom-color 0.15s ease;
+        }
+        .settings-tab:hover:not(.settings-tab-active) {
+            border-bottom-color: #d1d5db;
+        }
         .settings-tab-active {
-            border-bottom: 2px solid #3b82f6;
-            color: #1f2937;
+            color: #111827;
             font-weight: 600;
+            border-bottom-color: #2563eb;
         }
         .toggle-switch {
             position: relative;
@@ -100,14 +125,23 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 
             <!-- Settings Navigation Tabs -->
             <div class="border-b border-gray-200 mb-6">
-                <nav class="-mb-px flex space-x-8" id="settings-tabs">
-                    <a href="#" onclick="showTab('general')" class="settings-tab whitespace-nowrap py-3 px-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors settings-tab-active" data-tab="general">
+                <nav class="-mb-px flex flex-wrap gap-x-8 gap-y-1" id="settings-tabs" aria-label="Settings sections">
+                    <a href="#" onclick="showTab('general'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 settings-tab-active" data-tab="general">
                         General
                     </a>
-                    <a href="#" onclick="showTab('maintenance')" class="settings-tab whitespace-nowrap py-3 px-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-tab="maintenance">
+                    <a href="#" onclick="showTab('attendance-logs'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="attendance-logs">
+                        Attendance Logs
+                    </a>
+                    <a href="#" onclick="showTab('visitor-logs'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="visitor-logs">
+                        Visitor Logs
+                    </a>
+                    <a href="#" onclick="showTab('system-logs'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="system-logs">
+                        System Logs
+                    </a>
+                    <a href="#" onclick="showTab('maintenance'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="maintenance">
                         Maintenance Mode
                     </a>
-                    <a href="#" onclick="showTab('security')" class="settings-tab whitespace-nowrap py-3 px-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-tab="security">
+                    <a href="#" onclick="showTab('security'); return false;" class="settings-tab whitespace-nowrap py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="security">
                         Security
                     </a>
                 </nav>
@@ -131,25 +165,15 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                             <p class="mt-1 text-xs text-gray-500">The name displayed throughout the application</p>
                         </div>
 
-                        <!-- Timezone Selector -->
+                        <!-- Timezone Selector (PHP timezone identifiers) -->
                         <div>
                             <label for="timezone" class="block text-sm font-medium text-gray-700 mb-1">Default Time Zone</label>
-                            <select id="timezone" class="mt-1 block w-full md:w-1/2 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border">
-                                <option value="UTC-8:00">UTC-8:00 (Pacific Time)</option>
-                                <option value="UTC-5:00">UTC-5:00 (Eastern Time)</option>
-                                <option value="Asia/Manila" selected>UTC+8:00 (Philippine Standard Time)</option>
-                                <option value="UTC+0:00">UTC+0:00 (Greenwich Mean Time)</option>
-                                <option value="Asia/Singapore">UTC+8:00 (Singapore Time)</option>
-                                <option value="Asia/Tokyo">UTC+9:00 (Japan Standard Time)</option>
+                            <select id="timezone" class="mt-1 block w-full md:w-1/2 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg border max-w-full">
+                                <?php foreach ($timezoneIdentifiers as $tzId): ?>
+                                    <option value="<?= htmlspecialchars($tzId) ?>" <?= $tzId === 'Asia/Manila' ? 'selected' : '' ?>><?= htmlspecialchars($tzId) ?></option>
+                                <?php endforeach; ?>
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">This affects all time log and reporting calculations.</p>
-                        </div>
-
-                        <!-- Data Retention Policy -->
-                        <div>
-                            <label for="data_retention_days" class="block text-sm font-medium text-gray-700 mb-1">Data Retention Period (Attendance Logs)</label>
-                            <input type="number" id="data_retention_days" min="30" max="3650" class="mt-1 block w-full md:w-1/4 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
-                            <p class="mt-1 text-xs text-gray-500">Days to keep detailed logs before archival (30-3650 days).</p>
+                            <p class="mt-1 text-xs text-gray-500">Applied system-wide after save (PHP default timezone).</p>
                         </div>
                     </div>
                     
@@ -157,6 +181,120 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <button onclick="saveGeneralSettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
                             Save General Settings
                         </button>
+                    </div>
+                </div>
+
+                <!-- Attendance logs -->
+                <div id="attendance-logs" class="settings-tab-content bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Attendance Logs</h2>
+                    <p class="text-sm text-gray-600 mb-4">Export active (non-deleted) logs. Deletion requires your password and marks rows for removal; they are permanently purged after 30 days (automatic on each request, no scheduler).</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="space-y-3">
+                            <h3 class="font-medium text-gray-800">Export date range (optional)</h3>
+                            <p class="text-xs text-gray-500">Only applies to export downloads below.</p>
+                            <div class="flex gap-2 flex-wrap items-center">
+                                <input type="date" id="att_export_from" class="border rounded-lg p-2 text-sm" aria-label="Export from date">
+                                <span class="text-gray-400 text-sm">to</span>
+                                <input type="date" id="att_export_to" class="border rounded-lg p-2 text-sm" aria-label="Export to date">
+                            </div>
+                            <h3 class="font-medium text-gray-800 pt-2">Export</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" data-export-att="sql" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">SQL</button>
+                                <button type="button" data-export-att="pdf" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">PDF</button>
+                                <button type="button" data-export-att="docx" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">DOCX</button>
+                                <button type="button" data-export-att="xlsx" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">Excel</button>
+                                <button type="button" data-export-att="zip" class="bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded text-sm font-medium">ZIP (all types)</button>
+                            </div>
+                        </div>
+                        <div class="space-y-3 border border-red-100 bg-red-50/40 rounded-lg p-4">
+                            <h3 class="font-medium text-red-800">Delete logs (soft-delete)</h3>
+                            <p class="text-xs text-gray-600">Requires username and password. Matching rows get <code>deleted_at</code> set; hidden from reports until purged after 30 days.</p>
+                            <h4 class="text-sm font-medium text-gray-800 pt-1">Delete date range (optional)</h4>
+                            <p class="text-xs text-gray-500">Separate from export. Leave empty to include all active logs.</p>
+                            <div class="flex gap-2 flex-wrap items-center">
+                                <input type="date" id="att_del_from" class="border rounded-lg p-2 text-sm bg-white" aria-label="Delete from date">
+                                <span class="text-gray-400 text-sm">to</span>
+                                <input type="date" id="att_del_to" class="border rounded-lg p-2 text-sm bg-white" aria-label="Delete to date">
+                            </div>
+                            <input type="text" id="att_del_user" autocomplete="username" placeholder="Username" class="w-full border rounded-lg p-2 text-sm">
+                            <input type="password" id="att_del_pass" autocomplete="current-password" placeholder="Password" class="w-full border rounded-lg p-2 text-sm">
+                            <button type="button" id="att_del_btn" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-lg">Confirm deletion</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visitor logs -->
+                <div id="visitor-logs" class="settings-tab-content bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Visitor Logs</h2>
+                    <p class="text-sm text-gray-600 mb-4">Same rules as attendance logs: password for deletion, 30-day retention before permanent removal.</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="space-y-3">
+                            <h3 class="font-medium text-gray-800">Export date range (optional)</h3>
+                            <p class="text-xs text-gray-500">Only applies to export downloads below.</p>
+                            <div class="flex gap-2 flex-wrap items-center">
+                                <input type="date" id="vis_export_from" class="border rounded-lg p-2 text-sm" aria-label="Visitor export from date">
+                                <span class="text-gray-400 text-sm">to</span>
+                                <input type="date" id="vis_export_to" class="border rounded-lg p-2 text-sm" aria-label="Visitor export to date">
+                            </div>
+                            <h3 class="font-medium text-gray-800 pt-2">Export</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" data-export-vis="sql" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">SQL</button>
+                                <button type="button" data-export-vis="pdf" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">PDF</button>
+                                <button type="button" data-export-vis="docx" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">DOCX</button>
+                                <button type="button" data-export-vis="xlsx" class="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded text-sm">Excel</button>
+                                <button type="button" data-export-vis="zip" class="bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded text-sm font-medium">ZIP (all types)</button>
+                            </div>
+                        </div>
+                        <div class="space-y-3 border border-red-100 bg-red-50/40 rounded-lg p-4">
+                            <h3 class="font-medium text-red-800">Delete logs (soft-delete)</h3>
+                            <h4 class="text-sm font-medium text-gray-800 pt-1">Delete date range (optional)</h4>
+                            <p class="text-xs text-gray-500">Separate from export. Leave empty to include all active logs.</p>
+                            <div class="flex gap-2 flex-wrap items-center">
+                                <input type="date" id="vis_del_from" class="border rounded-lg p-2 text-sm bg-white" aria-label="Visitor delete from date">
+                                <span class="text-gray-400 text-sm">to</span>
+                                <input type="date" id="vis_del_to" class="border rounded-lg p-2 text-sm bg-white" aria-label="Visitor delete to date">
+                            </div>
+                            <input type="text" id="vis_del_user" autocomplete="username" placeholder="Username" class="w-full border rounded-lg p-2 text-sm">
+                            <input type="password" id="vis_del_pass" autocomplete="current-password" placeholder="Password" class="w-full border rounded-lg p-2 text-sm">
+                            <button type="button" id="vis_del_btn" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-lg">Confirm deletion</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System logs -->
+                <div id="system-logs" class="settings-tab-content bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">System Logs</h2>
+                    <p class="text-sm text-gray-600 mb-6">Runtime snapshot and a full logical SQL backup of this application&rsquo;s database. Store backups in a secure location; they contain all attendance and visitor data.</p>
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-8">
+                        <div class="border border-gray-100 rounded-lg p-4 bg-gray-50/80">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Database</p>
+                            <p class="text-sm font-mono text-gray-900 mt-1"><?= htmlspecialchars($systemDbName) ?></p>
+                        </div>
+                        <div class="border border-gray-100 rounded-lg p-4 bg-gray-50/80">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">MySQL version</p>
+                            <p class="text-sm font-mono text-gray-900 mt-1"><?= htmlspecialchars($systemMysqlVer) ?></p>
+                        </div>
+                        <div class="border border-gray-100 rounded-lg p-4 bg-gray-50/80">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">PHP version</p>
+                            <p class="text-sm font-mono text-gray-900 mt-1"><?= htmlspecialchars($systemPhpVer) ?></p>
+                        </div>
+                        <div class="border border-gray-100 rounded-lg p-4 bg-gray-50/80">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Server time</p>
+                            <p class="text-sm font-mono text-gray-900 mt-1"><?= htmlspecialchars(date('Y-m-d H:i:s T')) ?></p>
+                        </div>
+                    </div>
+
+                    <div class="border border-blue-100 bg-blue-50/50 rounded-xl p-5 mb-6">
+                        <h3 class="font-semibold text-gray-900 mb-2">Full database backup (.sql)</h3>
+                        <p class="text-sm text-gray-600 mb-4">Downloads schema and data for every table and view in the connected database (same credentials as this app). Restore with MySQL client or phpMyAdmin import.</p>
+                        <button type="button" id="system_db_backup_btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
+                            Download SQL backup
+                        </button>
+                    </div>
+
+                    <div class="text-sm text-gray-600 space-y-2 border-t pt-5">
+                        <p><strong>Login audit</strong> and <strong>Apache access log preview</strong> are under the <button type="button" class="text-blue-600 hover:underline font-medium" onclick="showTab('security'); return false;">Security</button> tab.</p>
                     </div>
                 </div>
 
@@ -174,7 +312,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                                 <div class="flex-1">
                                     <h3 class="text-lg font-semibold text-yellow-800 mb-2">Maintenance Mode</h3>
                                     <p class="text-sm text-yellow-700 mb-4">
-                                        When enabled, only administrators can log in to the system. All other users will be blocked from accessing the system until maintenance mode is disabled.
+                                        When enabled, only <strong>Administrator</strong>, <strong>Admin</strong> (profiling), and <strong>Barangay Secretary</strong> roles may use the system. Other users are blocked until maintenance is disabled.
                                     </p>
                                     <div class="flex items-center justify-between">
                                         <div>
@@ -194,7 +332,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
                         <div>
                             <label for="maintenance_message" class="block text-sm font-medium text-gray-700 mb-1">Maintenance Message</label>
                             <textarea id="maintenance_message" rows="3" class="mt-1 block w-full md:w-2/3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" placeholder="Enter a message to display during maintenance mode"></textarea>
-                            <p class="mt-1 text-xs text-gray-500">This message will be shown to non-admin users when they try to log in during maintenance mode.</p>
+                            <p class="mt-1 text-xs text-gray-500">Shown to users blocked during maintenance when they hit a protected page.</p>
                         </div>
                     </div>
                     
@@ -207,14 +345,58 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 
                 <!-- 3. Security Settings Tab (Hidden by default) -->
                 <div id="security" class="settings-tab-content bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Security & Authentication</h2>
-                    
-                    <div class="space-y-6">
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <h3 class="font-semibold text-blue-800 mb-2">Security Information</h3>
-                            <p class="text-sm text-blue-700">
-                                Security settings and authentication options will be available here in a future update.
-                            </p>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Security</h2>
+
+                    <div class="space-y-8">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800 mb-2">User access control</h3>
+                            <p class="text-sm text-gray-600 mb-3">Choose which account categories may <strong>log in</strong>. Changes apply on the next login attempt only.</p>
+                            <div class="space-y-2 max-w-lg">
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="uac_attendance_admins" class="rounded border-gray-300"> Attendance system administrators</label>
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="uac_profiling_admin" class="rounded border-gray-300"> Profiling &ldquo;admin&rdquo; accounts</label>
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="uac_barangay_officials" class="rounded border-gray-300"> Barangay officials</label>
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="uac_residents" class="rounded border-gray-300"> Residents</label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800 mb-2">Apache access log (XAMPP)</h3>
+                            <p class="text-sm text-gray-600 mb-2">Optional path to <code>access.log</code>. Leave blank to auto-detect (e.g. <code>C:/xampp/apache/logs/access.log</code>).</p>
+                            <input type="text" id="apache_access_log_path" class="w-full max-w-2xl border rounded-lg p-2 text-sm font-mono" placeholder="C:/xampp/apache/logs/access.log">
+                            <button type="button" id="reload_access_log" class="mt-2 bg-gray-100 hover:bg-gray-200 text-sm px-3 py-1.5 rounded">Reload preview</button>
+                            <pre id="access_log_preview" class="mt-3 text-xs bg-gray-900 text-green-400 p-3 rounded-lg overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap"></pre>
+                            <p id="access_log_meta" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800 mb-2">Login audit log</h3>
+                            <p class="text-sm text-gray-600 mb-2">Recorded by this application when <code>AuthController::login</code> is used.</p>
+                            <div class="overflow-x-auto border rounded-lg">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 text-left">
+                                        <tr>
+                                            <th class="p-2">Time</th>
+                                            <th class="p-2">User</th>
+                                            <th class="p-2">OK</th>
+                                            <th class="p-2">Source</th>
+                                            <th class="p-2">Role</th>
+                                            <th class="p-2">Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="login_logs_tbody"></tbody>
+                                </table>
+                            </div>
+                            <div class="flex gap-2 mt-2 items-center">
+                                <button type="button" id="login_logs_prev" class="text-sm px-2 py-1 border rounded">Prev</button>
+                                <button type="button" id="login_logs_next" class="text-sm px-2 py-1 border rounded">Next</button>
+                                <span id="login_logs_page_info" class="text-xs text-gray-500"></span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t">
+                            <button type="button" onclick="saveSecuritySettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
+                                Save security settings
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -223,177 +405,7 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         </main>
     </div>
 
-    <!-- JavaScript -->
-    <script type="module">
-        const API_BASE = '../api/settings/index.php';
-        
-        let currentSettings = {};
-
-        // Load settings on page load
-        async function loadSettings() {
-            try {
-                const response = await fetch(API_BASE);
-                const data = await response.json();
-                
-                if (data.success && data.settings) {
-                    currentSettings = data.settings;
-                    
-                    // Populate form fields
-                    if (currentSettings.app_name) {
-                        document.getElementById('app_name').value = currentSettings.app_name.value || '';
-                    }
-                    if (currentSettings.timezone) {
-                        document.getElementById('timezone').value = currentSettings.timezone.value || 'Asia/Manila';
-                    }
-                    if (currentSettings.data_retention_days) {
-                        document.getElementById('data_retention_days').value = currentSettings.data_retention_days.value || 365;
-                    }
-                    if (currentSettings.maintenance_mode) {
-                        document.getElementById('maintenance_mode').checked = currentSettings.maintenance_mode.value || false;
-                    }
-                    if (currentSettings.maintenance_message) {
-                        document.getElementById('maintenance_message').value = currentSettings.maintenance_message.value || '';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                showMessage('Failed to load settings', 'error');
-            }
-        }
-
-        // Save general settings
-        window.saveGeneralSettings = async function() {
-            const settings = {
-                app_name: document.getElementById('app_name').value,
-                timezone: document.getElementById('timezone').value,
-                data_retention_days: parseInt(document.getElementById('data_retention_days').value) || 365
-            };
-
-            try {
-                const response = await fetch(API_BASE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(settings)
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('General settings saved successfully', 'success');
-                    loadSettings(); // Reload to sync
-                } else {
-                    showMessage(data.message || 'Failed to save settings', 'error');
-                }
-            } catch (error) {
-                console.error('Error saving settings:', error);
-                showMessage('Failed to save settings', 'error');
-            }
-        };
-
-        // Save maintenance settings
-        window.saveMaintenanceSettings = async function() {
-            const settings = {
-                maintenance_mode: document.getElementById('maintenance_mode').checked ? 1 : 0,
-                maintenance_message: document.getElementById('maintenance_message').value
-            };
-
-            try {
-                const response = await fetch(API_BASE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(settings)
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    const mode = settings.maintenance_mode ? 'enabled' : 'disabled';
-                    showMessage(`Maintenance mode ${mode} successfully`, 'success');
-                    loadSettings(); // Reload to sync
-                } else {
-                    showMessage(data.message || 'Failed to save maintenance settings', 'error');
-                }
-            } catch (error) {
-                console.error('Error saving maintenance settings:', error);
-                showMessage('Failed to save maintenance settings', 'error');
-            }
-        };
-
-        // Maintenance toggle handler
-        window.onMaintenanceToggle = function() {
-            const isEnabled = document.getElementById('maintenance_mode').checked;
-            const message = isEnabled 
-                ? 'Maintenance mode will be enabled when you save. Only administrators will be able to log in.'
-                : 'Maintenance mode will be disabled when you save. All users will be able to log in.';
-            
-            // Show confirmation for enabling maintenance mode
-            if (isEnabled) {
-                if (!confirm(message + '\n\nDo you want to continue?')) {
-                    document.getElementById('maintenance_mode').checked = false;
-                    return;
-                }
-            }
-        };
-
-        // Show message
-        function showMessage(message, type = 'success') {
-            const container = document.getElementById('message-container');
-            const bgColor = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
-            
-            container.className = `mb-4 p-4 rounded-lg border ${bgColor}`;
-            container.innerHTML = `<p class="font-medium">${message}</p>`;
-            container.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                container.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Tab switching
-        window.showTab = function(tabName) {
-            // Hide all content tabs
-            document.querySelectorAll('.settings-tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-
-            // Deactivate all navigation tabs
-            document.querySelectorAll('.settings-tab').forEach(tab => {
-                tab.classList.remove('settings-tab-active');
-            });
-
-            // Show the selected content tab
-            const activeContent = document.getElementById(tabName);
-            if (activeContent) {
-                activeContent.classList.remove('hidden');
-            }
-
-            // Activate the selected navigation tab
-            const activeTab = document.querySelector(`.settings-tab[data-tab="${tabName}"]`);
-            if (activeTab) {
-                activeTab.classList.add('settings-tab-active');
-            }
-        };
-
-        // Sidebar toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const sidebar = document.getElementById('sidebar');
-            
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('-translate-x-full');
-                });
-            }
-            
-            // Load settings
-            loadSettings();
-        });
-    </script>
+    <script type="module" src="js/settings/main.js"></script>
     
     <!-- App Name Updater -->
     <script src="js/shared/appName.js"></script>
