@@ -28,7 +28,7 @@ if ($method === "POST" || $method === "PUT") {
 
     try {
         $accountController = new AccountController();
-        $result = $accountController->toggleLock(intval($id), $lock);
+        $result = $accountController->toggleLock($id, $lock);
 
         $status = $result["status"] ?? 200;
         unset($result["status"]);

@@ -73,7 +73,16 @@ try {
                 exit;
             }
 
-            $updatedBy = $user['id'] ?? null;
+            // `settings.updated_by` FK references `admins.id` only. Profiling/SSO users use IDs from
+            // other databases and must not be written here or MySQL rejects the update (400).
+            $updatedBy = null;
+            if (!empty($user['id'])) {
+                $localAdmin = Admin::find((int) $user['id']);
+                if ($localAdmin) {
+                    $updatedBy = (int) $user['id'];
+                }
+            }
+
             $result = $settingsController->update($input, $updatedBy);
             
             ob_clean();

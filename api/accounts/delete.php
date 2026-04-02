@@ -26,7 +26,7 @@ if ($method === "DELETE" || $method === "POST") {
 
     try {
         $accountController = new AccountController();
-        $result = $accountController->delete(intval($id));
+        $result = $accountController->delete($id);
 
         $status = $result["status"] ?? 200;
         unset($result["status"]);

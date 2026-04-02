@@ -1,9 +1,9 @@
 <?php
 /**
- * API Endpoint: Get available services
+ * API Endpoint: Get available services for visitor logging
  * GET /api/visitors/services.php
- * 
- * Returns list of available services (placeholder for external API integration)
+ *
+ * Loads certificate types from barangay_services2.certificate_types and appends Blotter.
  */
 require_once __DIR__ . "/../../bootstrap.php";
 
@@ -17,76 +17,37 @@ if ($method !== "GET") {
     exit;
 }
 
+$dbName = defined('BARANGAY_SERVICES2_DB_NAME') ? BARANGAY_SERVICES2_DB_NAME : 'barangay_services2';
+
 try {
-    // TODO: Replace this with actual external API call
-    // For now, this is a placeholder that returns mock services
-    // When you have the external API, replace this section with:
-    // 1. API call to external service
-    // 2. Parse and format the response
-    // 3. Return formatted services
-    
-    // Example external API call (uncomment when ready):
-    /*
-    $externalApiUrl = 'https://your-external-api.com/services';
-    $apiKey = 'your-api-key'; // Store in config
-    
-    $ch = curl_init($externalApiUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $apiKey,
-        'Content-Type: application/json'
-    ]);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode === 200) {
-        $services = json_decode($response, true);
-        echo json_encode([
-            'success' => true,
-            'services' => $services
-        ]);
-        exit;
+    $db = (new Database())->connect();
+    $q = '`' . str_replace('`', '', $dbName) . '`';
+
+    $sql = "
+        SELECT certificate_type_id, certificate_name, price
+        FROM {$q}.`certificate_types`
+        ORDER BY certificate_name ASC
+    ";
+    $stmt = $db->query($sql);
+    $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+    $services = [];
+    foreach ($rows as $row) {
+        $services[] = [
+            'service_id' => (int) $row['certificate_type_id'],
+            'service_name' => $row['certificate_name'],
+            'description' => '',
+            'duration' => '—',
+            'fee' => isset($row['price']) ? (float) $row['price'] : 0.0,
+        ];
     }
-    */
-    
-    $services = [
-        [
-            'service_id' => 1,
-            'service_name' => 'Barangay Clearance',
-            'description' => 'Certificate of residency and good standing',
-            'duration' => '15 minutes',
-            'fee' => 0
-        ],
-        [
-            'service_id' => 2,
-            'service_name' => 'Certificate of Residency',
-            'description' => 'Official proof of residence within the barangay',
-            'duration' => '15 minutes',
-            'fee' => 0
-        ],
-        [
-            'service_id' => 3,
-            'service_name' => 'Certificate of Indigency',
-            'description' => 'Certificate of indigency for government assistance',
-            'duration' => '20 minutes',
-            'fee' => 0
-        ],
-        [
-            'service_id' => 4,
-            'service_name' => 'Business Permit',
-            'description' => 'Application for barangay business permit',
-            'duration' => '30 minutes',
-            'fee' => 500
-        ],
-        [
-            'service_id' => 5,
-            'service_name' => 'Other Barangay Services',
-            'description' => 'General inquiry or other barangay services',
-            'duration' => 'Varies',
-            'fee' => 0
-        ]
+
+    $services[] = [
+        'service_id' => 'blotter',
+        'service_name' => 'Blotter',
+        'description' => 'Blotter / complaint filing',
+        'duration' => '—',
+        'fee' => 0.0,
     ];
 
     echo json_encode([
@@ -94,7 +55,6 @@ try {
         'services' => $services,
         'count' => count($services)
     ]);
-    
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([

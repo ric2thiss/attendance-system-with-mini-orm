@@ -269,6 +269,40 @@ function initLockButtons() {
   });
 }
 
+function initOfficialPortalButtons() {
+  document.querySelectorAll('.officialPortalBtn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+
+      const id = btn.dataset.id;
+      const allow = btn.dataset.allow === '1' || btn.dataset.allow === 1;
+      const username = btn.dataset.username || '';
+
+      if (!allow) {
+        const ok = window.confirm(
+          `Revoke system access for ${username}? They will not be able to use the portal while Inactive.`
+        );
+        if (!ok) return;
+      }
+
+      btn.disabled = true;
+      const original = btn.innerHTML;
+
+      try {
+        await apiRequest(
+          `/api/accounts/official-access.php?id=${encodeURIComponent(id)}&allow=${allow ? 1 : 0}`,
+          { method: 'POST' }
+        );
+        window.location.reload();
+      } catch (err) {
+        alert(err.message || 'Failed to update access');
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+  });
+}
+
 async function init() {
   initSidebar();
   setCurrentDate();
@@ -277,6 +311,7 @@ async function init() {
   initEditModal();
   initDeleteModal();
   initLockButtons();
+  initOfficialPortalButtons();
 }
 
 if (document.readyState === 'loading') {

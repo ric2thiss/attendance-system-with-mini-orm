@@ -39,6 +39,10 @@ $endRecord = $pagination['endRecord'];
 
 // Get current user ID to prevent self-deletion/locking
 $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$sessionAuthSource = $_SESSION['auth_source'] ?? '';
 
 ?>
 <!DOCTYPE html>
@@ -140,7 +144,7 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                 <input type="text" 
                                     name="search" 
                                     id="searchInput"
-                                    placeholder="Search username, email, or name..." 
+                                    placeholder="Search username, email, name, or position..." 
                                     value="<?= htmlspecialchars($searchQuery) ?>"
                                     class="w-full py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -180,14 +184,13 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                 <!-- Account Table -->
                 <div class="table-container rounded-lg border border-gray-200">
                     <div class="inline-block min-w-full align-middle">
-                        <table class="min-w-full divide-y divide-gray-200" style="min-width: 1000px; width: 100%;">
+                        <table class="min-w-full divide-y divide-gray-200" style="min-width: 880px; width: 100%;">
                         <thead class="table-header">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Username</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Full Name</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role / Position</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -196,26 +199,37 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                         <tbody class="bg-white divide-y divide-gray-200" id="accountsTableBody">
                             <?php if (empty($accounts)): ?>
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                                     <p class="text-sm">No accounts found.</p>
                                 </td>
                             </tr>
                             <?php else: ?>
                             <?php foreach ($accounts as $account): 
-                                $accountId = is_object($account) ? ($account->id ?? $account->ID ?? null) : ($account['id'] ?? null);
-                                $username = is_object($account) ? ($account->username ?? '') : ($account['username'] ?? '');
-                                $email = is_object($account) ? ($account->email ?? '') : ($account['email'] ?? '');
-                                $fullName = is_object($account) ? ($account->full_name ?? '') : ($account['full_name'] ?? '');
-                                $role = is_object($account) ? ($account->role ?? 'staff') : ($account['role'] ?? 'staff');
-                                $roleLabel = $role === 'manager' ? 'Official' : ucfirst($role);
-                                $isActive = is_object($account) ? ($account->is_active ?? 1) : ($account['is_active'] ?? 1);
-                                $lastLogin = is_object($account) ? ($account->last_login ?? null) : ($account['last_login'] ?? null);
-                                $isCurrentUser = $currentUserId && $accountId == $currentUserId;
+                                $account = is_object($account) ? (array) $account : $account;
+                                $accountId = $account['id'] ?? null;
+                                $username = $account['username'] ?? '';
+                                $email = $account['email'] ?? '';
+                                $fullName = $account['full_name'] ?? '';
+                                $role = $account['role'] ?? 'staff';
+                                $roleDisplay = $account['role_display'] ?? ($role === 'manager' ? 'Barangay Official' : ucfirst((string) $role));
+                                $roleLabel = ($account['source'] ?? '') === 'profiling_barangay_official'
+                                    ? (string) $roleDisplay
+                                    : ($role === 'manager' ? 'Official' : ucfirst((string) $role));
+                                $isActive = (int) ($account['is_active'] ?? 1);
+                                $source = $account['source'] ?? '';
+                                $numericId = (int) ($account['numeric_id'] ?? 0);
+                                $actionsEditable = !empty($account['actions_editable']);
+                                $isCurrentUser = false;
+                                if ($currentUserId && $numericId === (int) $currentUserId) {
+                                    if ($source === 'profiling_admin' && $sessionAuthSource === 'profiling_admin') {
+                                        $isCurrentUser = true;
+                                    }
+                                    if ($source === 'profiling_barangay_official' && $sessionAuthSource === 'profiling_barangay_official') {
+                                        $isCurrentUser = true;
+                                    }
+                                }
                             ?>
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <?= htmlspecialchars($accountId ?? '') ?>
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                     <?= htmlspecialchars($username) ?>
                                 </td>
@@ -240,14 +254,17 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <div class="flex items-center justify-center space-x-2">
+                                    <?php if ($isCurrentUser): ?>
+                                        <span class="text-sm text-gray-500">Your account</span>
+                                    <?php elseif ($actionsEditable): ?>
+                                    <div class="flex flex-wrap items-center justify-center gap-2">
                                         <button 
                                             class="editBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" 
-                                            data-id="<?= htmlspecialchars($accountId) ?>"
+                                            data-id="<?= htmlspecialchars((string) $accountId) ?>"
                                             data-username="<?= htmlspecialchars($username) ?>"
                                             data-email="<?= htmlspecialchars($email) ?>"
                                             data-full-name="<?= htmlspecialchars($fullName) ?>"
-                                            data-role="<?= htmlspecialchars($role) ?>"
+                                            data-role="<?= htmlspecialchars($account['role_display'] ?? $role) ?>"
                                             data-is-active="<?= $isActive ?>"
                                             title="Edit Account">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,10 +274,10 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                         </button>
                                         <button 
                                             class="lockBtn inline-flex items-center px-3 py-1.5 text-xs font-medium <?= $isActive ? 'text-orange-700 bg-orange-50 hover:bg-orange-100' : 'text-blue-700 bg-blue-50 hover:bg-blue-100' ?> rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1" 
-                                            data-id="<?= htmlspecialchars($accountId) ?>"
+                                            data-id="<?= htmlspecialchars((string) $accountId) ?>"
                                             data-is-active="<?= $isActive ?>"
                                             data-username="<?= htmlspecialchars($username) ?>"
-                                            <?= $isCurrentUser ? 'disabled title="Cannot lock your own account"' : 'title="' . ($isActive ? 'Lock Account' : 'Unlock Account') . '"' ?>
+                                            title="<?= $isActive ? 'Lock Account' : 'Unlock Account' ?>"
                                         >
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $isActive ? 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' : 'M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z' ?>"></path>
@@ -269,9 +286,9 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                         </button>
                                         <button 
                                             class="deleteBtn inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" 
-                                            data-id="<?= htmlspecialchars($accountId) ?>"
+                                            data-id="<?= htmlspecialchars((string) $accountId) ?>"
                                             data-username="<?= htmlspecialchars($username) ?>"
-                                            <?= $isCurrentUser ? 'disabled title="Cannot delete your own account"' : 'title="Delete Account"' ?>
+                                            title="Delete Account"
                                         >
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -279,6 +296,26 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                             Delete
                                         </button>
                                     </div>
+                                    <?php else: ?>
+                                    <div class="flex items-center justify-center">
+                                        <button
+                                            type="button"
+                                            class="officialPortalBtn inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 <?= $isActive ? 'text-amber-800 bg-amber-50 hover:bg-amber-100 focus:ring-amber-500' : 'text-indigo-800 bg-indigo-50 hover:bg-indigo-100 focus:ring-indigo-500' ?>"
+                                            data-id="<?= htmlspecialchars((string) $accountId) ?>"
+                                            data-username="<?= htmlspecialchars($username) ?>"
+                                            data-allow="<?= $isActive ? '0' : '1' ?>"
+                                            title="<?= $isActive ? 'Set portal status to Inactive (cannot use system)' : 'Set portal status to Active (can sign in)' ?>"
+                                        >
+                                            <?php if ($isActive): ?>
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                            Revoke system access
+                                            <?php else: ?>
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Allow system access
+                                            <?php endif; ?>
+                                        </button>
+                                    </div>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -410,8 +447,6 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                         <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
                                         <select id="role" name="role" required
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="staff">Staff</option>
-                                            <option value="manager">Official</option>
                                             <option value="administrator">Administrator</option>
                                         </select>
                                     </div>
@@ -516,9 +551,8 @@ $currentUserId = $currentUser ? ($currentUser['id'] ?? null) : null;
                                     </label>
                                     <select name="role" id="filter_role" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">All Roles</option>
-                                        <option value="administrator" <?= (isset($filters['role']) && $filters['role'] === 'administrator') ? 'selected' : '' ?>>Administrator</option>
-                                        <option value="manager" <?= (isset($filters['role']) && $filters['role'] === 'manager') ? 'selected' : '' ?>>Official</option>
-                                        <option value="staff" <?= (isset($filters['role']) && $filters['role'] === 'staff') ? 'selected' : '' ?>>Staff</option>
+                                        <option value="administrator" <?= (isset($filters['role']) && $filters['role'] === 'administrator') ? 'selected' : '' ?>>System administrator</option>
+                                        <option value="manager" <?= (isset($filters['role']) && $filters['role'] === 'manager') ? 'selected' : '' ?>>Barangay official (portal)</option>
                                     </select>
                                 </div>
 

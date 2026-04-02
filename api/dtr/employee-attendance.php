@@ -26,6 +26,8 @@ if ($method === "GET") {
     try {
         $db = (new Database())->connect();
         $profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
+        $profDbQ = '`' . str_replace('`', '``', $profilingDbName) . '`';
+        $delFilter = SchemaColumnCache::attendancesHasDeletedAt() ? 'a.deleted_at IS NULL AND ' : '';
 
         // Use the provided employee_id directly.
         // We intentionally do NOT require the employee to be enrolled in employee_fingerprints
@@ -36,7 +38,7 @@ if ($method === "GET") {
         try {
             $stmt = $db->prepare("
                 SELECT bo.first_name, bo.middle_name, bo.surname AS last_name
-                FROM `{$profilingDbName}`.`barangay_official` AS bo
+                FROM {$profDbQ}.`barangay_official` AS bo
                 WHERE bo.id = ?
                 LIMIT 1
             ");
@@ -48,7 +50,7 @@ if ($method === "GET") {
                 $lastName = $bo['last_name'] ?? '';
                 $employeeName = trim($firstName . ' ' . ($middleName ? ($middleName . ' ') : '') . $lastName);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // keep empty name on failure
         }
 
@@ -79,7 +81,7 @@ if ($method === "GET") {
                 COALESCE(aw.label, a.window) AS window_label
             FROM attendances a
             LEFT JOIN attendance_windows aw ON LOWER(TRIM(a.window)) = LOWER(TRIM(aw.label))
-            WHERE a.deleted_at IS NULL AND a.employee_id = ?
+            WHERE {$delFilter}a.employee_id = ?
             $dateFilter
             ORDER BY a.timestamp ASC
         ");
@@ -226,12 +228,13 @@ if ($method === "GET") {
             ]
         ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        error_log('employee-attendance: ' . $e->getMessage());
         http_response_code(500);
         echo json_encode([
             "success" => false,
             "error" => "Server error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
         ]);
         exit;
     }

@@ -1,14 +1,49 @@
 <?php
 require_once __DIR__ . "/../bootstrap.php";
 require_once __DIR__ . "/../auth/helpers.php";
-requireAuth(); // Require authentication
+requireAuth();
 
-include_once '../shared/components/Sidebar.php';
-include_once '../shared/components/Breadcrumb.php';
+include_once __DIR__ . "/../shared/components/Sidebar.php";
+include_once __DIR__ . "/../shared/components/Breadcrumb.php";
 
-// Get current user for greeting
 $currentUser = currentUser();
-$userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
+$userName = $currentUser ? ($currentUser["full_name"] ?? $currentUser["username"]) : "Guest";
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$sessionAuthSource = $_SESSION["auth_source"] ?? "";
+$profileReadOnly = $sessionAuthSource === "profiling_resident";
+
+$headerDate = date("l, F j, Y");
+
+$extraLastLogin = null;
+if ($sessionAuthSource === "profiling_admin") {
+    $pPdo = ProfilingPdo::get();
+    if ($pPdo && $currentUser && isset($currentUser["id"])) {
+        try {
+            $st = $pPdo->prepare("SELECT last_login FROM `admin` WHERE id = ? LIMIT 1");
+            $st->execute([(int) $currentUser["id"]]);
+            $lr = $st->fetch(PDO::FETCH_ASSOC);
+            if ($lr && !empty($lr["last_login"])) {
+                $extraLastLogin = $lr["last_login"];
+            }
+        } catch (Throwable $e) {
+            error_log("profile last_login: " . $e->getMessage());
+        }
+    }
+}
+
+$lastLoginRaw = $extraLastLogin ?? ($currentUser["last_login"] ?? null);
+$lastLoginLabel = null;
+if ($lastLoginRaw) {
+    $lastLoginLabel = date("M j, Y g:i A", strtotime($lastLoginRaw));
+}
+
+$roleDisplay = "";
+if ($currentUser && isset($currentUser["role"])) {
+    $roleDisplay = (string) $currentUser["role"];
+}
 
 ?>
 <!DOCTYPE html>
@@ -16,227 +51,207 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base-url" content="<?= htmlspecialchars(BASE_URL, ENT_QUOTES, "UTF-8") ?>">
     <title>My Profile</title>
     <link rel="stylesheet" href="../utils/styles/global.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.BASE_URL = <?= json_encode(BASE_URL, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    </script>
     <style>
-        body {
-            overflow-x: hidden;
-        }
+        body { overflow-x: hidden; }
+        main { overflow-x: hidden; max-width: 100%; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 antialiased">
 
-    <!-- Main Container -->
     <div class="flex min-h-screen">
 
-        <?=Sidebar("Profile", null)?>
+        <?= Sidebar("Profile", null) ?>
 
-        <!-- MAIN CONTENT AREA -->
         <main class="flex-1 md:ml-64 p-6 transition-all duration-300">
 
-            <!-- Top Header Bar -->
-            <header class="mb-6">
-                <div class="flex justify-between items-center mb-1">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-800">My Profile</h1>
-                        <p class="text-gray-500 text-sm"><?= getGreeting($userName) ?></p>
+            <header class="mb-8 border-b border-slate-200 pb-6">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">My Profile</h1>
+                        <p class="mt-2 text-slate-600 text-sm sm:text-base"><?= getGreeting($userName) ?> — manage how you appear in this system.</p>
+                    </div>
+                    <div class="text-left sm:text-right shrink-0">
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Today</p>
+                        <p id="profile-header-date" class="text-sm font-semibold text-slate-700"><?= htmlspecialchars($headerDate) ?></p>
                     </div>
                 </div>
                 <?php Breadcrumb([
-                    ['label' => 'Dashboard', 'link' => 'dashboard.php'],
-                    ['label' => 'Profile', 'link' => 'profile.php']
+                    ["label" => "Dashboard", "link" => "dashboard.php"],
+                    ["label" => "Profile", "link" => "profile.php"],
                 ]); ?>
             </header>
 
-            <!-- Success/Error Messages -->
-            <div id="message-container" class="mb-4 hidden"></div>
+            <div id="message-container" class="mb-4 hidden" role="alert"></div>
 
-            <!-- Profile Content -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <!-- Left Column: Profile Info -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <div class="text-center">
-                            <!-- Avatar -->
-                            <div class="mb-4">
-                                <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-semibold">
-                                    <?php
-                                    $initials = '';
-                                    if ($currentUser) {
-                                        $name = $currentUser['full_name'] ?? $currentUser['username'] ?? 'U';
-                                        $parts = explode(' ', $name);
-                                        if (count($parts) > 1) {
-                                            $initials = strtoupper(substr($parts[0], 0, 1) . substr($parts[count($parts)-1], 0, 1));
-                                        } else {
-                                            $initials = strtoupper(substr($name, 0, 2));
-                                        }
-                                    }
-                                    echo htmlspecialchars($initials);
-                                    ?>
-                                </div>
-                            </div>
-                            
-                            <!-- Name -->
-                            <h2 class="text-xl font-semibold text-gray-800 mb-1">
-                                <?= htmlspecialchars($currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest') ?>
-                            </h2>
-                            
-                            <!-- Role -->
-                            <p class="text-sm text-gray-500 mb-4">
+            <?php if ($profileReadOnly): ?>
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Resident accounts are updated in the <strong>Profiling</strong> system. Here you can only view your summary.
+                </div>
+            <?php endif; ?>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+                <div class="xl:col-span-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-br from-blue-700 to-blue-900 px-6 py-8 text-center text-white">
+                            <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/15 ring-4 ring-white/20 text-2xl font-bold">
                                 <?php
-                                if ($currentUser && isset($currentUser['role'])) {
-                                    $role = ucfirst($currentUser['role']);
-                                    echo htmlspecialchars($role);
+                                $initials = "U";
+                                if ($currentUser) {
+                                    $name = $currentUser["full_name"] ?? $currentUser["username"] ?? "U";
+                                    $parts = preg_split('/\s+/', trim($name));
+                                    if (count($parts) > 1) {
+                                        $initials = strtoupper(
+                                            mb_substr($parts[0], 0, 1) . mb_substr($parts[count($parts) - 1], 0, 1)
+                                        );
+                                    } else {
+                                        $initials = strtoupper(mb_substr($name, 0, 2));
+                                    }
                                 }
+                                echo htmlspecialchars($initials);
                                 ?>
-                            </p>
-                            
-                            <!-- Account Info -->
-                            <div class="border-t border-gray-200 pt-4 mt-4 text-left">
-                                <div class="space-y-2 text-sm">
-                                    <div>
-                                        <span class="text-gray-500">Account ID:</span>
-                                        <span class="ml-2 font-medium text-gray-800">#<?= htmlspecialchars($currentUser['id'] ?? 'N/A') ?></span>
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">Email:</span>
-                                        <span class="ml-2 font-medium text-gray-800"><?= htmlspecialchars($currentUser['email'] ?? 'N/A') ?></span>
-                                    </div>
-                                    <?php if ($currentUser && isset($currentUser['last_login'])): ?>
-                                    <div>
-                                        <span class="text-gray-500">Last Login:</span>
-                                        <span class="ml-2 font-medium text-gray-800">
-                                            <?php
-                                            if ($currentUser['last_login']) {
-                                                echo date('M d, Y H:i', strtotime($currentUser['last_login']));
-                                            } else {
-                                                echo 'Never';
-                                            }
-                                            ?>
-                                        </span>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
                             </div>
+                            <h2 class="mt-4 text-xl font-semibold truncate px-2">
+                                <?= htmlspecialchars($currentUser ? ($currentUser["full_name"] ?: $currentUser["username"]) : "Guest") ?>
+                            </h2>
+                            <?php if ($roleDisplay !== ""): ?>
+                                <p class="mt-1 text-sm text-blue-100"><?= htmlspecialchars($roleDisplay) ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="px-6 py-5 space-y-3 text-sm border-t border-slate-100">
+                            <div class="flex justify-between gap-2">
+                                <span class="text-slate-500">Username</span>
+                                <span class="font-medium text-slate-900 text-right truncate max-w-[55%]"><?= htmlspecialchars($currentUser["username"] ?? "—") ?></span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span class="text-slate-500">Email</span>
+                                <span class="font-medium text-slate-900 text-right truncate max-w-[55%]"><?= htmlspecialchars($currentUser["email"] ?? "—") ?></span>
+                            </div>
+                            <?php if ($lastLoginLabel): ?>
+                                <div class="flex justify-between gap-2">
+                                    <span class="text-slate-500">Last login</span>
+                                    <span class="font-medium text-slate-900 text-right"><?= htmlspecialchars($lastLoginLabel) ?></span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Column: Edit Forms -->
-                <div class="lg:col-span-2 space-y-6">
-                    
-                    <!-- Profile Information Form -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Profile Information</h2>
-                        
-                        <form id="profile-form" class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="xl:col-span-8 space-y-6">
+
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+                        <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-6">Profile information</h2>
+
+                        <form id="profile-form" class="space-y-5" <?= $profileReadOnly ? 'data-readonly="1"' : "" ?>>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                                    <input 
-                                        type="text" 
-                                        id="username" 
+                                    <label for="username" class="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+                                    <input
+                                        type="text"
+                                        id="username"
                                         name="username"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        value="<?= htmlspecialchars($currentUser['username'] ?? '') ?>"
-                                        placeholder="Enter username"
-                                        required
+                                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                        value="<?= htmlspecialchars($currentUser["username"] ?? "") ?>"
+                                        <?= $profileReadOnly ? "disabled" : "required" ?>
                                     >
-                                    <p class="mt-1 text-xs text-gray-500">Unique username for login</p>
+                                    <p class="mt-1.5 text-xs text-slate-500">Used to sign in.</p>
                                 </div>
-                                
                                 <div>
-                                    <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                    <input 
-                                        type="text" 
-                                        id="full_name" 
+                                    <label for="full_name" class="block text-sm font-medium text-slate-700 mb-1.5">Full name</label>
+                                    <input
+                                        type="text"
+                                        id="full_name"
                                         name="full_name"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        value="<?= htmlspecialchars($currentUser['full_name'] ?? '') ?>"
-                                        placeholder="Enter your full name"
+                                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                        value="<?= htmlspecialchars($currentUser["full_name"] ?? "") ?>"
+                                        <?= $profileReadOnly ? "disabled" : "" ?>
                                     >
                                 </div>
                             </div>
-                            
                             <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                                <input 
-                                    type="email" 
-                                    id="email" 
+                                <label for="email" class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                                <input
+                                    type="email"
+                                    id="email"
                                     name="email"
-                                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                    value="<?= htmlspecialchars($currentUser['email'] ?? '') ?>"
-                                    placeholder="Enter your email"
-                                    required
+                                    class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                    value="<?= htmlspecialchars($currentUser["email"] ?? "") ?>"
+                                    <?= $profileReadOnly ? "disabled" : "required" ?>
                                 >
                             </div>
-                            
-                            <div class="pt-4 border-t">
-                                <button 
-                                    type="submit" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors"
-                                >
-                                    Update Profile
-                                </button>
-                            </div>
+                            <?php if (!$profileReadOnly): ?>
+                                <div class="pt-2">
+                                    <button
+                                        type="submit"
+                                        class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                                    >
+                                        Save changes
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </form>
                     </div>
 
-                    <!-- Change Password Form -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-5 border-b pb-3">Change Password</h2>
-                        
-                        <form id="password-form" class="space-y-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+                        <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-6">Change password</h2>
+
+                        <form id="password-form" class="space-y-5" <?= $profileReadOnly ? 'data-readonly="1"' : "" ?>>
                             <div>
-                                <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                                <input 
-                                    type="password" 
-                                    id="current_password" 
+                                <label for="current_password" class="block text-sm font-medium text-slate-700 mb-1.5">Current password</label>
+                                <input
+                                    type="password"
+                                    id="current_password"
                                     name="current_password"
-                                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Enter current password"
-                                    required
+                                    autocomplete="current-password"
+                                    class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                    placeholder="••••••••"
+                                    <?= $profileReadOnly ? "disabled" : "required" ?>
                                 >
                             </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                                    <input 
-                                        type="password" 
-                                        id="new_password" 
+                                    <label for="new_password" class="block text-sm font-medium text-slate-700 mb-1.5">New password</label>
+                                    <input
+                                        type="password"
+                                        id="new_password"
                                         name="new_password"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Enter new password"
+                                        autocomplete="new-password"
+                                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                        placeholder="At least 6 characters"
                                         minlength="6"
-                                        required
+                                        <?= $profileReadOnly ? "disabled" : "required" ?>
                                     >
-                                    <p class="mt-1 text-xs text-gray-500">Minimum 6 characters</p>
                                 </div>
-                                
                                 <div>
-                                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                                    <input 
-                                        type="password" 
-                                        id="confirm_password" 
+                                    <label for="confirm_password" class="block text-sm font-medium text-slate-700 mb-1.5">Confirm new password</label>
+                                    <input
+                                        type="password"
+                                        id="confirm_password"
                                         name="confirm_password"
-                                        class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Confirm new password"
-                                        required
+                                        autocomplete="new-password"
+                                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                        placeholder="Repeat new password"
+                                        <?= $profileReadOnly ? "disabled" : "required" ?>
                                     >
                                 </div>
                             </div>
-                            
-                            <div class="pt-4 border-t">
-                                <button 
-                                    type="submit" 
-                                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors"
-                                >
-                                    Change Password
-                                </button>
-                            </div>
+                            <?php if (!$profileReadOnly): ?>
+                                <div class="pt-2">
+                                    <button
+                                        type="submit"
+                                        class="inline-flex items-center justify-center rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                                    >
+                                        Update password
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </form>
                     </div>
 
@@ -246,121 +261,6 @@ $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username'
         </main>
     </div>
 
-    <!-- JavaScript -->
-    <script type="module">
-        const API_BASE = '../api/profile/index.php';
-        
-        // Show message
-        function showMessage(message, type = 'success') {
-            const container = document.getElementById('message-container');
-            const bgColor = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
-            
-            container.className = `mb-4 p-4 rounded-lg border ${bgColor}`;
-            container.innerHTML = `<p class="font-medium">${message}</p>`;
-            container.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                container.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Profile form handler
-        document.getElementById('profile-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                username: document.getElementById('username').value.trim(),
-                full_name: document.getElementById('full_name').value.trim(),
-                email: document.getElementById('email').value.trim()
-            };
-            
-            try {
-                const response = await fetch(API_BASE, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('Profile updated successfully!', 'success');
-                    // Optionally reload page after 1 second to reflect changes
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    showMessage(data.message || 'Failed to update profile', 'error');
-                }
-            } catch (error) {
-                console.error('Error updating profile:', error);
-                showMessage('An error occurred. Please try again.', 'error');
-            }
-        });
-
-        // Password form handler
-        document.getElementById('password-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const newPassword = document.getElementById('new_password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            
-            // Validate passwords match
-            if (newPassword !== confirmPassword) {
-                showMessage('New passwords do not match', 'error');
-                return;
-            }
-            
-            // Validate password length
-            if (newPassword.length < 6) {
-                showMessage('Password must be at least 6 characters', 'error');
-                return;
-            }
-            
-            const formData = {
-                current_password: document.getElementById('current_password').value,
-                new_password: newPassword
-            };
-            
-            try {
-                const response = await fetch(API_BASE, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ ...formData, action: 'change_password' })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('Password changed successfully!', 'success');
-                    // Reset form
-                    document.getElementById('password-form').reset();
-                } else {
-                    showMessage(data.message || 'Failed to change password', 'error');
-                }
-            } catch (error) {
-                console.error('Error changing password:', error);
-                showMessage('An error occurred. Please try again.', 'error');
-            }
-        });
-
-        // Sidebar toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const sidebar = document.getElementById('sidebar');
-            
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('-translate-x-full');
-                });
-            }
-        });
-    </script>
-
+    <script type="module" src="./js/profile/main.js"></script>
 </body>
 </html>

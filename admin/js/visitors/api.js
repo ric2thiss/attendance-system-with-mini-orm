@@ -44,11 +44,51 @@ export class VisitorAPI {
                 return data;
             } else {
                 console.error("Error checking booking:", data.error);
-                return { has_booking: false, booking: null };
+                return { has_booking: false, booking: null, has_pending: false, pending_requests: [] };
             }
         } catch (err) {
             console.error("❌ Error checking booking:", err);
-            return { has_booking: false, booking: null };
+            return { has_booking: false, booking: null, has_pending: false, pending_requests: [] };
+        }
+    }
+
+    /**
+     * Name suggestions: profiling residents + previous non-resident logs
+     */
+    async lookupVisitorNames(query) {
+        const q = (query || '').trim();
+        if (q.length < 2) {
+            return { success: true, profiling: [], previous_visitors: [] };
+        }
+        try {
+            const response = await fetch(
+                `${this.baseUrl}/api/visitors/lookup-name.php?q=${encodeURIComponent(q)}&limit=12`
+            );
+            const data = await response.json();
+            if (data.success) {
+                return data;
+            }
+            return { success: false, profiling: [], previous_visitors: [] };
+        } catch (err) {
+            console.error("❌ lookupVisitorNames:", err);
+            return { success: false, profiling: [], previous_visitors: [] };
+        }
+    }
+
+    /**
+     * Latest non-resident log row for form prefill
+     */
+    async fetchLastNonResident() {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/visitors/last-non-resident.php`);
+            const data = await response.json();
+            if (data.success && data.visitor) {
+                return data.visitor;
+            }
+            return null;
+        } catch (err) {
+            console.error("❌ fetchLastNonResident:", err);
+            return null;
         }
     }
 

@@ -3,7 +3,6 @@
 class AuthController
 {
     protected $adminRepository;
-    protected $profilingDbConnection = null;
 
     public function __construct()
     {
@@ -18,26 +17,7 @@ class AuthController
      */
     protected function getProfilingDbConnection(): ?PDO
     {
-        if ($this->profilingDbConnection !== null) {
-            return $this->profilingDbConnection;
-        }
-
-        try {
-            $host = "localhost";
-            $dbname = defined('PROFILING_DB_NAME') ? PROFILING_DB_NAME : "profiling-system";
-            $username = "root";
-            $password = "";
-
-            $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8";
-            $this->profilingDbConnection = new PDO($dsn, $username, $password);
-            $this->profilingDbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->profilingDbConnection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-            return $this->profilingDbConnection;
-        } catch (PDOException $e) {
-            error_log("Profiling DB connection failed: " . $e->getMessage());
-            return null;
-        }
+        return ProfilingPdo::get();
     }
 
     /**
@@ -57,20 +37,26 @@ class AuthController
 
         // 1. Check profiling-system admin table
         try {
-            $stmt = $conn->prepare("SELECT * FROM admin WHERE username = :username LIMIT 1");
-            $stmt->bindParam(':username', $username);
-            $stmt->execute();
+            $stmt = $conn->prepare("SELECT * FROM admin WHERE username = :login OR email = :login2 LIMIT 1");
+            $stmt->execute([
+                ":login" => $username,
+                ":login2" => $username,
+            ]);
 
             if ($row = $stmt->fetch()) {
-                // Verify password (support both hash and plain for legacy/dev)
-                if (password_verify($password, $row['password']) || $password === $row['password']) {
+                if (array_key_exists("is_active", $row) && (int) $row["is_active"] === 0) {
+                    return null;
+                }
+                if (password_verify($password, $row["password"])) {
+                    $fullName = $row["full_name"] ?? $row["name"] ?? $row["username"];
+
                     return [
-                        'id' => $row['id'],
-                        'username' => $row['username'],
-                        'email' => $row['email'] ?? null,
-                        'full_name' => $row['name'] ?? $row['username'],
-                        'role' => 'admin',
-                        'source' => 'profiling_admin'
+                        "id" => $row["id"],
+                        "username" => $row["username"],
+                        "email" => $row["email"] ?? "",
+                        "full_name" => $fullName,
+                        "role" => "admin",
+                        "source" => "profiling_admin",
                     ];
                 }
             }
@@ -85,6 +71,9 @@ class AuthController
             $stmt->execute();
 
             if ($row = $stmt->fetch()) {
+                if (($row['status'] ?? '') !== 'Active') {
+                    return null;
+                }
                 if (password_verify($password, $row['password'])) {
                     return [
                         'id' => $row['id'],

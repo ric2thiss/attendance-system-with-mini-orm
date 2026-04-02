@@ -37,7 +37,7 @@ function applyUserAccessFromSettings() {
 
 async function loadSettings() {
     try {
-        const response = await fetch(API_BASE);
+        const response = await fetch(API_BASE, { credentials: 'same-origin' });
         const data = await response.json();
         if (data.success && data.settings) {
             currentSettings = data.settings;
@@ -79,6 +79,7 @@ window.saveGeneralSettings = async function () {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings),
+            credentials: 'same-origin',
         });
         const data = await response.json();
         if (data.success) {
@@ -109,6 +110,7 @@ window.saveSecuritySettings = async function () {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings),
+            credentials: 'same-origin',
         });
         const data = await response.json();
         if (data.success) {
@@ -132,6 +134,7 @@ window.saveMaintenanceSettings = async function () {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings),
+            credentials: 'same-origin',
         });
         const data = await response.json();
         if (data.success) {

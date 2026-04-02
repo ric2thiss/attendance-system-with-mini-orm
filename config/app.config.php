@@ -126,6 +126,11 @@ if (!defined("PROFILING_DB_NAME")) {
     define("PROFILING_DB_NAME", "profiling-system");
 }
 
+// Barangay services (certificate requests, blotter, certificate types) — read-only from attendance-system
+if (!defined("BARANGAY_SERVICES2_DB_NAME")) {
+    define("BARANGAY_SERVICES2_DB_NAME", "barangay_services2");
+}
+
 // LGUMS scheduling database (read-only; schedule_events). Same MySQL server as attendance-system.
 if (!defined("LGUMS_DB_NAME")) {
     define("LGUMS_DB_NAME", "lgums");

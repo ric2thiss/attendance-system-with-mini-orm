@@ -11,11 +11,17 @@ $currentUser = currentUser();
 $userName = $currentUser ? ($currentUser['full_name'] ?? $currentUser['username']) : 'Guest';
 
 // Get employees for dropdown:
-// - Prefer IDs that actually exist in `attendances` and/or `employee_fingerprints`
-// - Enrich with names from profiling-system.barangay_official when available
+// - IDs from employee_fingerprints, attendances, and profiling barangay_official (so officials appear even before first clock-in)
+// - Enrich names from profiling DB when available
+// - Only filter attendances by deleted_at when that column exists (same as SchemaColumnCache elsewhere)
 try {
     $pdo = (new Database())->connect();
     $profilingDbName = defined("PROFILING_DB_NAME") ? PROFILING_DB_NAME : "profiling-system";
+    $profDbQ = '`' . str_replace('`', '``', $profilingDbName) . '`';
+
+    $attendanceIdsSql = SchemaColumnCache::attendancesHasDeletedAt()
+        ? 'SELECT DISTINCT employee_id FROM attendances WHERE deleted_at IS NULL'
+        : 'SELECT DISTINCT employee_id FROM attendances';
 
     $sql = "
         SELECT
@@ -27,9 +33,12 @@ try {
         FROM (
             SELECT DISTINCT employee_id FROM employee_fingerprints
             UNION
-            SELECT DISTINCT employee_id FROM attendances WHERE deleted_at IS NULL
+            {$attendanceIdsSql}
+            UNION
+            SELECT DISTINCT CAST(bo_all.id AS CHAR) AS employee_id
+            FROM {$profDbQ}.`barangay_official` AS bo_all
         ) AS t
-        LEFT JOIN `{$profilingDbName}`.`barangay_official` AS bo
+        LEFT JOIN {$profDbQ}.`barangay_official` AS bo
             ON CAST(t.employee_id AS CHAR) = CAST(bo.id AS CHAR)
         ORDER BY (bo.surname IS NULL) ASC, bo.surname ASC, bo.first_name ASC, t.employee_id ASC
         LIMIT 500
@@ -38,7 +47,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $employees = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("DTR Page: Error fetching employees for dropdown: " . $e->getMessage());
     $employees = [];
 }

@@ -6,32 +6,44 @@ import getBaseUrl from '../shared/baseUrl.js';
 
 const API = `${getBaseUrl()}/api/reports/visitor-analytics.php`;
 
-const colors = {
-    primary: '#3b82f6',
-    secondary: '#8b5cf6',
-    success: '#10b981',
-    warning: '#f59e0b',
-    danger: '#ef4444',
-    info: '#06b6d4',
-    purple: '#a855f7',
-    pink: '#ec4899',
-    teal: '#14b8a6',
-    orange: '#f97316',
-    gray: '#6b7280',
-};
+/**
+ * Chart colors aligned with admin/js/attendance-analytics/main.js (Tailwind-aligned hex + cc/d0 alpha).
+ */
+const chartBlue = '#3b82f6';
+const chartEmerald = '#10b981';
+const chartAmber = '#f59e0b';
+const chartOrange = '#ea580c';
+const chartIndigo = '#6366f1';
+const chartViolet = '#8b5cf6';
+const chartRed = '#ef4444';
+const chartCyan = '#06b6d4';
+const chartPink = '#ec4899';
+const chartTeal = '#14b8a6';
+const chartGrayEmpty = '#e5e7eb';
 
-const colorPalette = [
-    colors.primary,
-    colors.secondary,
-    colors.success,
-    colors.warning,
-    colors.danger,
-    colors.info,
-    colors.purple,
-    colors.pink,
-    colors.teal,
-    colors.orange,
+/** Pie / multi-series: same order as attendance “position” pie */
+const piePalette = [
+    chartBlue,
+    chartViolet,
+    chartEmerald,
+    chartAmber,
+    chartRed,
+    chartCyan,
+    chartPink,
+    chartTeal,
+    chartOrange,
+    chartIndigo,
 ];
+
+/** Distinct bar color per widget (avoids every chart looking identical) */
+const barChartColors = {
+    trend: chartBlue,
+    peakHours: chartIndigo,
+    dayOfWeek: chartEmerald,
+    ageGroups: chartViolet,
+    purok: chartAmber,
+    barangay: chartTeal,
+};
 
 const chartRefs = {};
 
@@ -75,13 +87,19 @@ function pieOptions(title) {
     };
 }
 
-function renderBar(canvasId, labels, values, datasetLabel = 'Visits') {
+function renderBar(canvasId, labels, values, datasetLabel = 'Visits', barColor = chartBlue) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (chartRefs[canvasId]) {
         chartRefs[canvasId].destroy();
     }
+    const isPlaceholder =
+        labels.length === 1 &&
+        (labels[0] === 'No data' || labels[0] === '—') &&
+        values.every((v) => Number(v) === 0);
+    const fill = isPlaceholder ? `${chartGrayEmpty}` : `${barColor}cc`;
+    const stroke = isPlaceholder ? chartGrayEmpty : barColor;
     chartRefs[canvasId] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -90,8 +108,8 @@ function renderBar(canvasId, labels, values, datasetLabel = 'Visits') {
                 {
                     label: datasetLabel,
                     data: values,
-                    backgroundColor: colors.primary + 'AA',
-                    borderColor: colors.primary,
+                    backgroundColor: fill,
+                    borderColor: stroke,
                     borderWidth: 1,
                 },
             ],
@@ -107,7 +125,13 @@ function renderPie(canvasId, labels, values) {
     if (chartRefs[canvasId]) {
         chartRefs[canvasId].destroy();
     }
-    const bg = labels.map((_, i) => colorPalette[i % colorPalette.length]);
+    const total = (values || []).reduce((a, b) => a + Number(b), 0);
+    const isEmpty =
+        total === 0 ||
+        (labels.length === 1 && String(labels[0]).toLowerCase() === 'no data');
+    const bg = isEmpty
+        ? [chartGrayEmpty]
+        : labels.map((_, i) => `${piePalette[i % piePalette.length]}cc`);
     chartRefs[canvasId] = new Chart(ctx, {
         type: 'pie',
         data: {
@@ -116,7 +140,7 @@ function renderPie(canvasId, labels, values) {
                 {
                     data: values,
                     backgroundColor: bg,
-                    borderColor: '#fff',
+                    borderColor: '#ffffff',
                     borderWidth: 1,
                 },
             ],
@@ -232,10 +256,11 @@ export function renderVisitorAnalytics(data) {
             'chartVisitorTrend',
             trends.map((r) => r.label),
             trends.map((r) => r.count),
-            'Visits'
+            'Visits',
+            barChartColors.trend
         );
     } else {
-        renderBar('chartVisitorTrend', ['No data'], [0]);
+        renderBar('chartVisitorTrend', ['No data'], [0], 'Visits', barChartColors.trend);
     }
 
     const hours = data.peak_hours || [];
@@ -246,7 +271,7 @@ export function renderVisitorAnalytics(data) {
         const found = hours.find((x) => Number(x.hour) === h);
         hourVals.push(found ? found.count : 0);
     }
-    renderBar('chartPeakHours', hourLabels, hourVals, 'Visits');
+    renderBar('chartPeakHours', hourLabels, hourVals, 'Visits', barChartColors.peakHours);
 
     const dow = data.day_of_week || [];
     if (dow.length) {
@@ -254,10 +279,11 @@ export function renderVisitorAnalytics(data) {
             'chartDayOfWeek',
             dow.map((r) => r.day),
             dow.map((r) => r.count),
-            'Visits'
+            'Visits',
+            barChartColors.dayOfWeek
         );
     } else {
-        renderBar('chartDayOfWeek', ['—'], [0]);
+        renderBar('chartDayOfWeek', ['—'], [0], 'Visits', barChartColors.dayOfWeek);
     }
 
     const purposes = data.purposes || [];
@@ -292,10 +318,11 @@ export function renderVisitorAnalytics(data) {
             'chartAgeGroups',
             age.map((r) => r.label),
             age.map((r) => r.count),
-            'Visitors'
+            'Visitors',
+            barChartColors.ageGroups
         );
     } else {
-        renderBar('chartAgeGroups', ['—'], [0]);
+        renderBar('chartAgeGroups', ['—'], [0], 'Visitors', barChartColors.ageGroups);
     }
 
     const pk = data.purok || [];
@@ -304,10 +331,11 @@ export function renderVisitorAnalytics(data) {
             'chartPurok',
             pk.map((r) => r.label),
             pk.map((r) => r.count),
-            'Visits'
+            'Visits',
+            barChartColors.purok
         );
     } else {
-        renderBar('chartPurok', ['—'], [0]);
+        renderBar('chartPurok', ['—'], [0], 'Visits', barChartColors.purok);
     }
 
     const br = data.barangay || [];
@@ -316,10 +344,11 @@ export function renderVisitorAnalytics(data) {
             'chartBarangay',
             br.map((r) => r.label),
             br.map((r) => r.count),
-            'Visits'
+            'Visits',
+            barChartColors.barangay
         );
     } else {
-        renderBar('chartBarangay', ['—'], [0]);
+        renderBar('chartBarangay', ['—'], [0], 'Visits', barChartColors.barangay);
     }
 
     const cv = data.civil_status || [];

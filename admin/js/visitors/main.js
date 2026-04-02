@@ -41,6 +41,30 @@ function isAnyModalOpen() {
 }
 
 /**
+ * Build booking payload from a pending request row (certificate or blotter)
+ */
+function bookingFromPendingItem(pr) {
+    if (!pr) return null;
+    const raw = pr.created_at ? String(pr.created_at).replace(' ', 'T') : null;
+    const created = raw ? new Date(raw) : new Date();
+    const valid = !Number.isNaN(created.getTime());
+    const pad = (n) => String(n).padStart(2, '0');
+    return {
+        booking_id: pr.type === 'certificate' ? `cert:${pr.id}` : `blotter:${pr.id}`,
+        request_type: pr.type,
+        request_id: pr.id,
+        service_name: pr.service_name,
+        purpose: pr.purpose,
+        appointment_date: valid ? created.toISOString().slice(0, 10) : null,
+        appointment_time: valid
+            ? `${pad(created.getHours())}:${pad(created.getMinutes())}:${pad(created.getSeconds())}`
+            : null,
+        status: 'Pending',
+        notes: ''
+    };
+}
+
+/**
  * Handle recognized face
  */
 async function handleRecognizedFace(id, name, residentData) {
@@ -68,23 +92,53 @@ async function handleRecognizedFace(id, name, residentData) {
     try {
         const bookingResult = await visitorAPI.checkBooking(id);
 
-        if (bookingResult.has_booking && bookingResult.booking) {
-            // Scenario 1: auto-log, stop camera, show confirmation modal (auto-closes after 5s)
-            await logResidentWithBooking(residentData, bookingResult.booking);
-            activityLogger.addLogEntry(name, bookingResult.booking.service_name || 'Booked Service');
-            refreshVisitorLogs();
+        if (bookingResult.completed_only) {
             stopCamera();
-            bookingModal.showBooking(residentData, bookingResult.booking);
-        } else {
-            // Scenario 2: show service selection modal
-            const services = await visitorAPI.fetchServices();
-            bookingModal.showServices(residentData, services, async (service) => {
-                await logResidentWithoutBooking(residentData, service);
-                activityLogger.addLogEntry(name, service.service_name || service.name || 'Service');
+            bookingModal.showRequestsCompleted(
+                residentData,
+                'Your certificate or blotter requests are already completed (nothing pending). No new log entry was created.'
+            );
+            return;
+        }
+
+        const pendingList = bookingResult.pending_requests || [];
+        const hasPending =
+            bookingResult.has_pending === true ||
+            (Array.isArray(pendingList) && pendingList.length > 0);
+
+        if (hasPending && pendingList.length === 1) {
+            const booking = bookingFromPendingItem(pendingList[0]) || bookingResult.booking;
+            if (booking) {
+                await logResidentWithBooking(residentData, booking);
+                activityLogger.addLogEntry(name, booking.service_name || 'Booked Service');
                 refreshVisitorLogs();
                 stopCamera();
-            });
+                bookingModal.showBooking(residentData, booking);
+            }
+            return;
         }
+
+        if (hasPending && pendingList.length >= 2) {
+            bookingModal.showChoosePendingRequest(residentData, pendingList, async (chosen) => {
+                const booking = bookingFromPendingItem(chosen);
+                if (!booking) return;
+                await logResidentWithBooking(residentData, booking);
+                activityLogger.addLogEntry(name, booking.service_name || 'Booked Service');
+                refreshVisitorLogs();
+                stopCamera();
+                bookingModal.showBooking(residentData, booking);
+            });
+            return;
+        }
+
+        // Walk-in / no pending requests: service list from barangay_services2 (+ Blotter) + Other
+        const services = await visitorAPI.fetchServices();
+        bookingModal.showServices(residentData, services, async (service) => {
+            await logResidentWithoutBooking(residentData, service);
+            activityLogger.addLogEntry(name, service.service_name || service.name || 'Service');
+            refreshVisitorLogs();
+            stopCamera();
+        });
     } catch (error) {
         console.error("Error checking booking:", error);
         try {

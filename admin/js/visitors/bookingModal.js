@@ -59,6 +59,20 @@ export class BookingModal {
                             </div>
                         </div>
 
+                        <!-- Completed requests (no new log) -->
+                        <div id="completed-requests-section" class="hidden">
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                                <h4 class="text-lg font-semibold text-amber-900 mb-2">Request already completed</h4>
+                                <p id="completed-requests-message" class="text-amber-900 text-sm leading-relaxed"></p>
+                            </div>
+                        </div>
+
+                        <!-- Multiple pending requests: pick one -->
+                        <div id="pending-choice-section" class="hidden">
+                            <p class="text-sm text-gray-600 mb-3">You have more than one pending request. Select the one you are checking in for:</p>
+                            <div id="pending-choice-list" class="space-y-3"></div>
+                        </div>
+
                         <!-- Services Section -->
                         <div id="services-section" class="hidden">
                             <div class="mb-4">
@@ -151,6 +165,11 @@ export class BookingModal {
         const bookingStatus = document.getElementById('booking-status');
         const bookingNotes = document.getElementById('booking-notes');
 
+        const pendingChoiceEl = document.getElementById('pending-choice-section');
+        if (pendingChoiceEl) pendingChoiceEl.classList.add('hidden');
+        const completedSecBk = document.getElementById('completed-requests-section');
+        if (completedSecBk) completedSecBk.classList.add('hidden');
+
         if (bookingInfo) bookingInfo.classList.remove('hidden');
         if (bookingService) bookingService.textContent = booking.service_name || 'N/A';
 
@@ -170,8 +189,9 @@ export class BookingModal {
 
         if (bookingStatus) {
             bookingStatus.textContent = booking.status || 'Pending';
-            const statusClass = booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+            const st = (booking.status || '').toLowerCase();
+            const statusClass = st === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              st === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-800';
             bookingStatus.className = `px-2 py-1 rounded text-sm ${statusClass}`;
         }
@@ -186,13 +206,18 @@ export class BookingModal {
         const servicesSection = document.getElementById('services-section');
         if (servicesSection) servicesSection.classList.add('hidden');
 
+        const completedSec = document.getElementById('completed-requests-section');
+        if (completedSec) completedSec.classList.add('hidden');
+        const pendingChoice = document.getElementById('pending-choice-section');
+        if (pendingChoice) pendingChoice.classList.add('hidden');
+
         const tryAgainBtn = document.getElementById('modal-try-again');
         if (tryAgainBtn) {
             tryAgainBtn.classList.add('hidden');
         }
 
         const modalTitle = document.getElementById('modal-title');
-        if (modalTitle) modalTitle.textContent = 'Logged Automatically (Online Booking)';
+        if (modalTitle) modalTitle.textContent = 'Visit logged';
 
         this.show();
 
@@ -222,13 +247,23 @@ export class BookingModal {
         if (visitorName && residentData?.name) {
             visitorName.textContent = residentData.name;
         }
-        if (visitorId && residentData?.phil_sys_number) {
-            visitorId.textContent = `PhilSys: ${residentData.phil_sys_number}`;
+        if (visitorId) {
+            if (residentData?.phil_sys_number) {
+                visitorId.textContent = `PhilSys: ${residentData.phil_sys_number}`;
+            } else if (residentData?.resident_id != null || residentData?.id != null) {
+                visitorId.textContent = `Resident ID: ${residentData.resident_id ?? residentData.id}`;
+            } else {
+                visitorId.textContent = '';
+            }
         }
 
         // Hide booking info
         const bookingInfo = document.getElementById('booking-info');
         if (bookingInfo) bookingInfo.classList.add('hidden');
+        const completedSec = document.getElementById('completed-requests-section');
+        if (completedSec) completedSec.classList.add('hidden');
+        const pendingChoice = document.getElementById('pending-choice-section');
+        if (pendingChoice) pendingChoice.classList.add('hidden');
 
         // Show services section
         const servicesSection = document.getElementById('services-section');
@@ -252,16 +287,11 @@ export class BookingModal {
                     const serviceCard = document.createElement('div');
                     serviceCard.className = 'border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer';
                     serviceCard.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h5 class="font-semibold text-gray-800 mb-1">${this.escapeHtml(service.service_name || 'Service')}</h5>
-                                <p class="text-sm text-gray-600 mb-2">${this.escapeHtml(service.description || '')}</p>
-                                <div class="flex items-center space-x-4 text-xs text-gray-500">
-                                    <span>⏱️ ${service.duration || 'N/A'}</span>
-                                    <span>💰 ₱${service.fee || 0}</span>
-                                </div>
+                        <div class="flex justify-between items-center gap-3">
+                            <div class="flex-1 min-w-0">
+                                <h5 class="font-semibold text-gray-800">${this.escapeHtml(service.service_name || 'Service')}</h5>
                             </div>
-                            <button class="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                            <button type="button" class="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
                                 Select
                             </button>
                         </div>
@@ -275,6 +305,37 @@ export class BookingModal {
                     
                     servicesList.appendChild(serviceCard);
                 });
+
+                const otherCard = document.createElement('div');
+                otherCard.className = 'border border-dashed border-gray-300 rounded-lg p-4 space-y-3';
+                otherCard.innerHTML = `
+                    <h5 class="font-semibold text-gray-800">Other (specify)</h5>
+                    <p class="text-sm text-gray-600">If the service you need is not listed, describe it below.</p>
+                    <input type="text" id="booking-other-service-input" maxlength="255"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Type the service name">
+                    <button type="button" id="booking-other-service-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                        Continue with this service
+                    </button>
+                `;
+                servicesList.appendChild(otherCard);
+                const otherBtn = otherCard.querySelector('#booking-other-service-btn');
+                const otherInput = otherCard.querySelector('#booking-other-service-input');
+                if (otherBtn && otherInput) {
+                    otherBtn.addEventListener('click', () => {
+                        const custom = (otherInput.value || '').trim();
+                        if (!custom) {
+                            otherInput.focus();
+                            return;
+                        }
+                        const customService = {
+                            service_id: 'other',
+                            service_name: custom,
+                            description: ''
+                        };
+                        this.handleServiceSelection(customService, residentData, onServiceSelect);
+                    });
+                }
             }
         }
 
@@ -283,6 +344,118 @@ export class BookingModal {
         if (modalTitle) modalTitle.textContent = 'Available Services';
 
         // Show modal
+        this.show();
+    }
+
+    /**
+     * No pending requests — existing records are already completed (no log created)
+     */
+    showRequestsCompleted(residentData, message) {
+        if (!this.modal) return;
+
+        const visitorPhoto = document.getElementById('modal-visitor-photo');
+        const visitorName = document.getElementById('modal-visitor-name');
+        const visitorId = document.getElementById('modal-visitor-id');
+
+        if (visitorPhoto && residentData?.img) {
+            visitorPhoto.src = residentData.img;
+        }
+        if (visitorName && residentData?.name) {
+            visitorName.textContent = residentData.name;
+        }
+        if (visitorId) {
+            visitorId.textContent = `Resident ID: ${residentData?.resident_id ?? residentData?.id ?? ''}`;
+        }
+
+        const bookingInfo = document.getElementById('booking-info');
+        if (bookingInfo) bookingInfo.classList.add('hidden');
+        const servicesSection = document.getElementById('services-section');
+        if (servicesSection) servicesSection.classList.add('hidden');
+        const pendingChoice = document.getElementById('pending-choice-section');
+        if (pendingChoice) pendingChoice.classList.add('hidden');
+
+        const completedSec = document.getElementById('completed-requests-section');
+        const completedMsg = document.getElementById('completed-requests-message');
+        if (completedSec) completedSec.classList.remove('hidden');
+        if (completedMsg) {
+            completedMsg.textContent = message || 'Your requests are already completed. No log entry was created.';
+        }
+
+        const tryAgainBtn = document.getElementById('modal-try-again');
+        if (tryAgainBtn) {
+            tryAgainBtn.classList.remove('hidden');
+        }
+
+        const modalTitle = document.getElementById('modal-title');
+        if (modalTitle) modalTitle.textContent = 'Check-in not required';
+
+        this.show();
+    }
+
+    /**
+     * Two pending requests — visitor picks which one applies to this visit
+     */
+    showChoosePendingRequest(residentData, pendingRequests, onSelect) {
+        if (!this.modal || !Array.isArray(pendingRequests) || pendingRequests.length < 2) return;
+
+        const visitorPhoto = document.getElementById('modal-visitor-photo');
+        const visitorName = document.getElementById('modal-visitor-name');
+        const visitorId = document.getElementById('modal-visitor-id');
+
+        if (visitorPhoto && residentData?.img) {
+            visitorPhoto.src = residentData.img;
+        }
+        if (visitorName && residentData?.name) {
+            visitorName.textContent = residentData.name;
+        }
+        if (visitorId) {
+            visitorId.textContent = `Resident ID: ${residentData?.resident_id ?? residentData?.id ?? ''}`;
+        }
+
+        const bookingInfo = document.getElementById('booking-info');
+        if (bookingInfo) bookingInfo.classList.add('hidden');
+        const servicesSection = document.getElementById('services-section');
+        if (servicesSection) servicesSection.classList.add('hidden');
+        const completedSec = document.getElementById('completed-requests-section');
+        if (completedSec) completedSec.classList.add('hidden');
+
+        const pendingChoice = document.getElementById('pending-choice-section');
+        const listEl = document.getElementById('pending-choice-list');
+        if (pendingChoice) pendingChoice.classList.remove('hidden');
+        if (listEl) {
+            listEl.innerHTML = '';
+            pendingRequests.forEach((req) => {
+                const row = document.createElement('div');
+                row.className = 'border border-gray-200 rounded-lg p-4 flex justify-between items-center gap-3';
+                const typeLabel = req.type === 'blotter' ? 'Blotter' : 'Certificate';
+                row.innerHTML = `
+                    <div class="min-w-0">
+                        <p class="text-xs font-medium text-gray-500 uppercase">${this.escapeHtml(typeLabel)}</p>
+                        <p class="font-semibold text-gray-800 truncate">${this.escapeHtml(req.service_name || 'Request')}</p>
+                        <p class="text-sm text-gray-600 truncate">${this.escapeHtml(req.purpose || '')}</p>
+                    </div>
+                    <button type="button" class="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                        Select
+                    </button>
+                `;
+                const btn = row.querySelector('button');
+                btn.addEventListener('click', async () => {
+                    if (typeof onSelect === 'function') {
+                        await onSelect(req);
+                    }
+                });
+                listEl.appendChild(row);
+            });
+        }
+
+        const tryAgainBtn = document.getElementById('modal-try-again');
+        if (tryAgainBtn) {
+            tryAgainBtn.classList.remove('hidden');
+        }
+
+        const modalTitle = document.getElementById('modal-title');
+        if (modalTitle) modalTitle.textContent = 'Select pending request';
+
         this.show();
     }
 

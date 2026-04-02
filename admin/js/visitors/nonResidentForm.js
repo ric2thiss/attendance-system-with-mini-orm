@@ -8,6 +8,7 @@ export class NonResidentForm {
         this.onTryAgain = onTryAgain;
         this.onSubmitSuccess = onSubmitSuccess;
         this.formModal = null;
+        this._lookupTimer = null;
         this.createFormModal();
     }
 
@@ -83,6 +84,8 @@ export class NonResidentForm {
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="House Number, Street, Barangay, City, Province"></textarea>
                             </div>
+
+                            <div id="visitor-lookup-suggestions" class="hidden rounded-lg border border-gray-200 bg-gray-50 shadow-sm max-h-52 overflow-y-auto divide-y divide-gray-100"></div>
 
                             <!-- Services Section (will be populated dynamically) -->
                             <div id="non-resident-services-section" class="hidden">
@@ -163,6 +166,108 @@ export class NonResidentForm {
                 this.handleSubmit();
             });
         }
+
+        this._bindNameLookup();
+    }
+
+    _bindNameLookup() {
+        const fn = document.getElementById('visitor-first-name');
+        const ln = document.getElementById('visitor-last-name');
+        const schedule = () => {
+            if (this._lookupTimer) clearTimeout(this._lookupTimer);
+            this._lookupTimer = setTimeout(() => this._runNameLookup(), 320);
+        };
+        if (fn) fn.addEventListener('input', schedule);
+        if (ln) ln.addEventListener('input', schedule);
+    }
+
+    _hideSuggestions() {
+        const box = document.getElementById('visitor-lookup-suggestions');
+        if (box) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+        }
+    }
+
+    async _runNameLookup() {
+        const fn = (document.getElementById('visitor-first-name')?.value || '').trim();
+        const ln = (document.getElementById('visitor-last-name')?.value || '').trim();
+        const q = `${fn} ${ln}`.trim();
+        const box = document.getElementById('visitor-lookup-suggestions');
+        if (!box || q.length < 2) {
+            this._hideSuggestions();
+            return;
+        }
+
+        const data = await this.visitorAPI.lookupVisitorNames(q);
+        const prof = data.profiling || [];
+        const prev = data.previous_visitors || [];
+        if (prof.length === 0 && prev.length === 0) {
+            this._hideSuggestions();
+            return;
+        }
+
+        box.innerHTML = '';
+        const addHeading = (label) => {
+            const h = document.createElement('p');
+            h.className = 'px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-white sticky top-0';
+            h.textContent = label;
+            box.appendChild(h);
+        };
+
+        if (prof.length > 0) {
+            addHeading('Profiling (residents)');
+            prof.forEach((row) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-gray-800';
+                btn.textContent = `${row.full_name || ''}${row.resident_id ? ` · ID ${row.resident_id}` : ''}`;
+                btn.addEventListener('click', () => {
+                    this._applySuggestionFromProfiling(row);
+                    this._hideSuggestions();
+                });
+                box.appendChild(btn);
+            });
+        }
+        if (prev.length > 0) {
+            addHeading('Previous visitors');
+            prev.forEach((row) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-gray-800';
+                btn.textContent = row.full_name || `${row.first_name} ${row.last_name}`;
+                btn.addEventListener('click', () => {
+                    this._applySuggestionFromVisitorLog(row);
+                    this._hideSuggestions();
+                });
+                box.appendChild(btn);
+            });
+        }
+        box.classList.remove('hidden');
+    }
+
+    _applySuggestionFromProfiling(row) {
+        const set = (id, v) => {
+            const el = document.getElementById(id);
+            if (el) el.value = v || '';
+        };
+        set('visitor-first-name', row.first_name);
+        set('visitor-middle-name', row.middle_name || '');
+        set('visitor-last-name', row.last_name);
+        if (row.birthdate) set('visitor-birthdate', String(row.birthdate).slice(0, 10));
+        if (row.address_hint) set('visitor-address', row.address_hint);
+    }
+
+    _applySuggestionFromVisitorLog(row) {
+        const set = (id, v) => {
+            const el = document.getElementById(id);
+            if (el) el.value = v || '';
+        };
+        set('visitor-first-name', row.first_name);
+        set('visitor-middle-name', row.middle_name || '');
+        set('visitor-last-name', row.last_name);
+        if (row.birthdate) set('visitor-birthdate', String(row.birthdate).slice(0, 10));
+        if (row.address) set('visitor-address', row.address);
     }
 
     /**
@@ -175,11 +280,31 @@ export class NonResidentForm {
         const form = document.getElementById('non-resident-form');
         if (form) form.reset();
 
+        this._hideSuggestions();
+
         // Hide error
         const errorDiv = document.getElementById('non-resident-error');
         if (errorDiv) {
             errorDiv.classList.add('hidden');
             errorDiv.textContent = '';
+        }
+
+        // Reuse last non-resident log as default (optional prefill)
+        try {
+            const last = await this.visitorAPI.fetchLastNonResident();
+            if (last) {
+                const set = (id, v) => {
+                    const el = document.getElementById(id);
+                    if (el && v) el.value = v;
+                };
+                set('visitor-first-name', last.first_name);
+                set('visitor-middle-name', last.middle_name || '');
+                set('visitor-last-name', last.last_name);
+                if (last.birthdate) set('visitor-birthdate', String(last.birthdate).slice(0, 10));
+                set('visitor-address', last.address || '');
+            }
+        } catch (e) {
+            console.warn('last non-resident prefill skipped', e);
         }
 
         // Fetch services
@@ -201,6 +326,7 @@ export class NonResidentForm {
      * Hide form modal
      */
     hide() {
+        this._hideSuggestions();
         if (this.formModal) {
             this.formModal.classList.add('hidden');
             document.body.style.overflow = '';
@@ -226,21 +352,17 @@ export class NonResidentForm {
         servicesList.innerHTML = '';
 
         services.forEach(service => {
+            const sid = String(service.service_id).replace(/[^a-zA-Z0-9_-]/g, '_');
             const serviceCard = document.createElement('div');
             serviceCard.className = 'border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer';
-            serviceCard.dataset.serviceId = service.service_id;
+            serviceCard.dataset.serviceId = String(service.service_id);
             serviceCard.dataset.serviceName = service.service_name;
             serviceCard.innerHTML = `
-                <div class="flex items-start">
-                    <input type="radio" name="service" value="${service.service_id}" id="service-${service.service_id}" 
-                        class="mt-1 mr-3" required>
-                    <label for="service-${service.service_id}" class="flex-1 cursor-pointer">
-                        <h5 class="font-semibold text-gray-800 mb-1">${this.escapeHtml(service.service_name || 'Service')}</h5>
-                        <p class="text-sm text-gray-600 mb-2">${this.escapeHtml(service.description || '')}</p>
-                        <div class="flex items-center space-x-4 text-xs text-gray-500">
-                            <span>⏱️ ${service.duration || 'N/A'}</span>
-                            <span>💰 ₱${service.fee || 0}</span>
-                        </div>
+                <div class="flex items-center">
+                    <input type="radio" name="service" value="${this.escapeHtml(String(service.service_id))}" id="service-${sid}" 
+                        class="mt-0.5 mr-3">
+                    <label for="service-${sid}" class="flex-1 cursor-pointer">
+                        <h5 class="font-semibold text-gray-800">${this.escapeHtml(service.service_name || 'Service')}</h5>
                     </label>
                 </div>
             `;
@@ -255,6 +377,28 @@ export class NonResidentForm {
 
             servicesList.appendChild(serviceCard);
         });
+
+        const otherCard = document.createElement('div');
+        otherCard.className = 'border border-dashed border-gray-300 rounded-lg p-4 space-y-2';
+        otherCard.dataset.serviceName = 'Other';
+        otherCard.innerHTML = `
+            <div class="flex items-start gap-3">
+                <input type="radio" name="service" value="other" id="service-other" class="mt-1">
+                <div class="flex-1 min-w-0">
+                    <label for="service-other" class="font-semibold text-gray-800 cursor-pointer">Other (specify)</label>
+                    <input type="text" id="non-resident-other-purpose" maxlength="255"
+                        class="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Describe the service">
+                </div>
+            </div>
+        `;
+        otherCard.addEventListener('click', (e) => {
+            if (e.target.type !== 'text') {
+                const radio = otherCard.querySelector('#service-other');
+                if (radio) radio.checked = true;
+            }
+        });
+        servicesList.appendChild(otherCard);
     }
 
     /**
@@ -287,10 +431,20 @@ export class NonResidentForm {
             return;
         }
 
-        const selectedService = {
-            service_id: selectedServiceRadio.value,
-            service_name: selectedServiceRadio.closest('[data-service-name]')?.dataset.serviceName || 'Service'
-        };
+        let selectedService;
+        if (selectedServiceRadio.value === 'other') {
+            const custom = (document.getElementById('non-resident-other-purpose')?.value || '').trim();
+            if (!custom) {
+                this.showError('Please describe the service for “Other”.');
+                return;
+            }
+            selectedService = { service_id: 'other', service_name: custom };
+        } else {
+            selectedService = {
+                service_id: selectedServiceRadio.value,
+                service_name: selectedServiceRadio.closest('[data-service-name]')?.dataset.serviceName || 'Service'
+            };
+        }
 
         // Validate required fields
         if (!visitorData.first_name || !visitorData.last_name || !visitorData.birthdate || !visitorData.address) {
