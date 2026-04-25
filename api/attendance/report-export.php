@@ -68,14 +68,54 @@ if ($mode === 'event' && $eventId > 0) {
         exit;
     }
     $rangeLabel = ($act['activity_date'] ?? '') . ' · ' . ($act['name'] ?? '');
-    $headers = ['Employee ID', 'Employee Name', 'Date', 'Time In', 'Time Out', 'Status', 'Event'];
+    $headers = ['Employee Name', 'Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Status', 'Event'];
+
+    // For each roster row, fetch per-window times
+    $delFilter = SchemaColumnCache::attendancesHasDeletedAt() ? 'a.deleted_at IS NULL AND ' : '';
     foreach ($bundle['rows'] as $r) {
+        $morningIn = '—';
+        $morningOut = '—';
+        $afternoonIn = '—';
+        $afternoonOut = '—';
+
+        try {
+            $winQuery = $pdo->prepare("
+                SELECT a.window, a.timestamp
+                FROM attendances AS a
+                WHERE {$delFilter}a.employee_id = ?
+                  AND DATE(COALESCE(a.timestamp, a.created_at)) = ?
+                ORDER BY a.timestamp ASC
+            ");
+            $winQuery->execute([$r['employee_id'], $r['date']]);
+            $winRows = $winQuery->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            foreach ($winRows as $wr) {
+                $wNorm = AttendanceAnalyticsService::normalizeLabel((string)($wr['window'] ?? ''));
+                $wTs = (string)($wr['timestamp'] ?? '');
+                if ($wTs === '') continue;
+                try {
+                    $wDt = new DateTime($wTs, new DateTimeZone('Asia/Manila'));
+                    $wTime = $wDt->format('h:i:s A');
+                } catch (Exception $ex) {
+                    $wTime = $wTs;
+                }
+                if ($wNorm === 'morning_in') $morningIn = $wTime;
+                elseif ($wNorm === 'morning_out') $morningOut = $wTime;
+                elseif ($wNorm === 'afternoon_in') $afternoonIn = $wTime;
+                elseif ($wNorm === 'afternoon_out') $afternoonOut = $wTime;
+            }
+        } catch (Throwable $ex) {
+            if ($r['time_in'] !== '—') $morningIn = $r['time_in'];
+            if ($r['time_out'] !== '—') $afternoonOut = $r['time_out'];
+        }
+
         $rows[] = [
-            $r['employee_id'],
             $r['full_name'],
             $r['date'],
-            $r['time_in'],
-            $r['time_out'],
+            $morningIn,
+            $morningOut,
+            $afternoonIn,
+            $afternoonOut,
             $r['status'],
             $r['event_name'],
         ];
@@ -83,38 +123,83 @@ if ($mode === 'event' && $eventId > 0) {
 } else {
     $rangeLabel = trim(($fromDate ?? '') . ' to ' . ($toDate ?? ''));
     $list = $attRepo->getReportLogsExport($search, $fromDate, $toDate, $activityFilter, $sort, $order, 5000);
-    $headers = ['Employee ID', 'Employee Name', 'Date', 'Time In', 'Time Out', 'Status', 'Event'];
+    $showEvent = ($activityFilter !== null);
+    $headers = $showEvent
+        ? ['Employee Name', 'Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Event']
+        : ['Employee Name', 'Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out'];
+
+    // Group by employee+date
+    $grouped = [];
     foreach ($list as $att) {
         $a = is_object($att) ? json_decode(json_encode($att), true) : $att;
         $ts = (string) ($a['attendance_time'] ?? '');
         $datePart = '—';
-        $timePart = '—';
         if ($ts !== '') {
             try {
                 $dt = new DateTime($ts, new DateTimeZone('Asia/Manila'));
                 $datePart = $dt->format('Y-m-d');
+            } catch (Exception $e) {}
+        }
+        $empId = (string) ($a['employee_id'] ?? '');
+        $fullName = (string) ($a['full_name'] ?? '');
+        $wl = (string) ($a['window_label'] ?? $a['window'] ?? '');
+        $norm = AttendanceAnalyticsService::normalizeLabel($wl);
+        $actName = (string) ($a['activity_name'] ?? '—');
+
+        $key = $empId . '|' . $datePart;
+        if (!isset($grouped[$key])) {
+            $grouped[$key] = [
+                'employee_id' => $empId,
+                'full_name' => $fullName,
+                'date' => $datePart,
+                'morning_in' => '—',
+                'morning_out' => '—',
+                'afternoon_in' => '—',
+                'afternoon_out' => '—',
+                'activity_name' => $actName,
+            ];
+        }
+
+        $timePart = '—';
+        if ($ts !== '') {
+            try {
+                $dt = new DateTime($ts, new DateTimeZone('Asia/Manila'));
                 $timePart = $dt->format('h:i:s A');
             } catch (Exception $e) {
                 $timePart = $ts;
             }
         }
-        $wl = (string) ($a['window_label'] ?? $a['window'] ?? '');
-        $norm = AttendanceAnalyticsService::normalizeLabel($wl);
-        $timeIn = preg_match('/_in$/', $norm) ? $timePart : '—';
-        $timeOut = preg_match('/_out$/', $norm) ? $timePart : '—';
-        if ($timeIn === '—' && $timeOut === '—') {
-            $timeIn = $timePart;
+
+        if ($norm === 'morning_in') {
+            $grouped[$key]['morning_in'] = $timePart;
+        } elseif ($norm === 'morning_out') {
+            $grouped[$key]['morning_out'] = $timePart;
+        } elseif ($norm === 'afternoon_in') {
+            $grouped[$key]['afternoon_in'] = $timePart;
+        } elseif ($norm === 'afternoon_out') {
+            $grouped[$key]['afternoon_out'] = $timePart;
+        } elseif ($timePart !== '—' && $grouped[$key]['morning_in'] === '—') {
+            $grouped[$key]['morning_in'] = $timePart;
         }
-        $status = $wl !== '' ? $wl : 'Logged';
-        $rows[] = [
-            (string) ($a['employee_id'] ?? ''),
-            (string) ($a['full_name'] ?? ''),
-            $datePart,
-            $timeIn,
-            $timeOut,
-            $status,
-            (string) ($a['activity_name'] ?? '—'),
+
+        if ($actName !== '—') {
+            $grouped[$key]['activity_name'] = $actName;
+        }
+    }
+
+    foreach ($grouped as $g) {
+        $row = [
+            $g['full_name'],
+            $g['date'],
+            $g['morning_in'],
+            $g['morning_out'],
+            $g['afternoon_in'],
+            $g['afternoon_out'],
         ];
+        if ($showEvent) {
+            $row[] = $g['activity_name'];
+        }
+        $rows[] = $row;
     }
 }
 
@@ -138,9 +223,9 @@ if ($format === 'csv') {
     exit;
 }
 
-$htmlTable = '<table border="1" cellpadding="4" cellspacing="0"><thead><tr>';
+$htmlTable = '<table border="1" cellpadding="4" cellspacing="0" style="width:100%; border-collapse:collapse;"><thead><tr>';
 foreach ($headers as $hcol) {
-    $htmlTable .= '<th>' . h($hcol) . '</th>';
+    $htmlTable .= '<th style="background-color:#f2f2f2;">' . h($hcol) . '</th>';
 }
 $htmlTable .= '</tr></thead><tbody>';
 foreach ($rows as $r) {
@@ -153,10 +238,13 @@ foreach ($rows as $r) {
 $htmlTable .= '</tbody></table>';
 
 $docHeadXml = '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:Orientation>Landscape</w:Orientation></w:WordDocument></xml><![endif]-->';
-$docStyles = '<style>@page Section1 { size: 11in 8.5in; mso-page-orientation: landscape; } div.Section1 { page: Section1; }</style>';
+$docStyles = '<style>@page Section1 { size: 11in 8.5in; mso-page-orientation: landscape; } div.Section1 { page: Section1; } .center { text-align: center; }</style>';
 $docHeader = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>' . h($title) . '</title>' . $docStyles . '</head><body>' . $docHeadXml;
-$docHeader .= '<div class="Section1"><p><strong>' . h($title) . '</strong><br>Period: ' . h($rangeLabel) . '</p>';
-$docHeader .= $htmlTable . '</div></body></html>';
+$docHeader .= '<div class="Section1"><div class="center">';
+$docHeader .= '<img src="' . h($logoUrl) . '" width="100" height="auto"><br>';
+$docHeader .= '<h1>' . h($title) . '</h1>';
+$docHeader .= '<p>Selected range / event: ' . h($rangeLabel) . '</p>';
+$docHeader .= '</div>' . $htmlTable . '</div></body></html>';
 
 if ($format === 'doc') {
     header('Content-Type: application/msword; charset=utf-8');
@@ -176,25 +264,29 @@ header('Content-Type: text/html; charset=utf-8');
     <style>
         @page { size: A4 landscape; margin: 12mm; }
         body { font-family: Arial, sans-serif; margin: 24px; color: #000; }
-        h1 { font-size: 18px; margin: 0 0 8px; }
-        .meta { margin-bottom: 16px; font-size: 14px; }
+        .header-content { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 22px; margin: 10px 0 5px; }
+        .meta { margin-bottom: 20px; font-size: 14px; font-weight: bold; }
         table { border-collapse: collapse; width: 100%; font-size: 11px; }
-        th, td { border: 1px solid #333; padding: 5px 7px; text-align: left; }
-        th { font-weight: bold; }
-        .logo { max-height: 56px; margin-bottom: 10px; }
+        th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; }
+        th { font-weight: bold; background-color: #f3f4f6; }
+        .logo { max-height: 80px; width: auto; margin: 0 auto; display: block; }
         @media print {
             .no-print { display: none !important; }
             @page { size: A4 landscape; margin: 10mm; }
+            body { margin: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="no-print" style="margin-bottom:12px;">
-        <button type="button" onclick="window.print()">Print</button>
+    <div class="no-print" style="margin-bottom:12px; text-align: right;">
+        <button type="button" onclick="window.print()" style="padding: 8px 16px; cursor: pointer;">Print Report</button>
     </div>
-    <img class="logo" src="<?= h($logoUrl) ?>" alt="Logo">
-    <h1><?= h($title) ?></h1>
-    <div class="meta">Selected range / event: <?= h($rangeLabel) ?></div>
+    <div class="header-content">
+        <img class="logo" src="<?= h($logoUrl) ?>" alt="Logo">
+        <h1><?= h($title) ?></h1>
+        <div class="meta">Selected range / event: <?= h($rangeLabel) ?></div>
+    </div>
     <?= $htmlTable ?>
 </body>
 </html>

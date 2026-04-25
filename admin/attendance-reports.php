@@ -425,22 +425,7 @@ function ar_sort_link(string $col, string $label, string $currentSort, string $c
                     </div>
                 </div>
 
-                <form method="get" action="" class="mb-4 flex flex-wrap gap-2 items-center no-print">
-                    <?php foreach ($_GET as $pk => $pv): ?>
-                        <?php
-                        if ($pk === 'search' || $pk === 'page') {
-                            continue;
-                        }
-                        ?>
-                        <input type="hidden" name="<?= htmlspecialchars((string) $pk, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $pv, ENT_QUOTES, 'UTF-8') ?>">
-                    <?php endforeach; ?>
-                    <input type="hidden" name="page" value="1">
-                    <label class="text-sm text-gray-600">Search</label>
-                    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Name or ID" class="pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg w-64 max-w-full">
-                    <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg">Search</button>
-                </form>
-
-                <div id="pdf-source" class="overflow-x-auto">
+                <div id="pdf-source">
                     <div class="flex items-center gap-4 mb-4 print:flex">
                         <img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Logo" class="h-14 w-auto object-contain">
                         <div>
@@ -454,85 +439,199 @@ function ar_sort_link(string $col, string $label, string $currentSort, string $c
                             </p>
                         </div>
                     </div>
-                    <table class="table-plain min-w-full">
-                        <thead>
-                            <tr>
+
+                    <form method="get" action="" class="mb-4 flex flex-wrap gap-2 items-center no-print" data-html2canvas-ignore>
+                        <?php foreach ($_GET as $pk => $pv): ?>
+                            <?php
+                            if ($pk === 'search' || $pk === 'page') {
+                                continue;
+                            }
+                            ?>
+                            <input type="hidden" name="<?= htmlspecialchars((string) $pk, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $pv, ENT_QUOTES, 'UTF-8') ?>">
+                        <?php endforeach; ?>
+                        <input type="hidden" name="page" value="1">
+                        <label class="text-sm text-gray-600">Search</label>
+                        <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Name or ID" class="pl-3 pr-3 py-2 text-sm border border-gray-300 rounded-lg w-64 max-w-full">
+                        <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg">Search</button>
+                    </form>
+
+                    <div class="overflow-x-auto">
+                        <?php
+                        // Determine if event column should be shown:
+                        // - In event mode: always show
+                        // - In logs mode: only when an activity filter is applied
+                        $showEventCol = ($mode === 'event') || ($activityFilter !== null && $activityFilter !== '');
+                        $totalCols = $showEventCol ? 7 : 6;
+                        ?>
+                        <table class="table-plain min-w-full">
+                            <thead>
                                 <?php if ($mode === 'event'): ?>
-                                    <th><?= ar_sort_link('employee_id', 'Employee ID', $sort, $order, $mode) ?></th>
-                                    <th><?= ar_sort_link('full_name', 'Employee Name', $sort, $order, $mode) ?></th>
-                                    <th>Date</th>
-                                    <th>Time In</th>
-                                    <th>Time Out</th>
-                                    <th>Status</th>
-                                    <th>Event</th>
+                                    <tr>
+                                        <th rowspan="2" style="vertical-align:bottom"><?= ar_sort_link('full_name', 'Employee Name', $sort, $order, $mode) ?></th>
+                                        <th rowspan="2" style="vertical-align:bottom">Date</th>
+                                        <th colspan="2" style="text-align:center; border-bottom:1px solid #d1d5db">Morning</th>
+                                        <th colspan="2" style="text-align:center; border-bottom:1px solid #d1d5db">Afternoon</th>
+                                        <th rowspan="2" style="vertical-align:bottom">Status</th>
+                                        <th rowspan="2" style="vertical-align:bottom">Event</th>
+                                    </tr>
+                                    <tr>
+                                        <th>In</th>
+                                        <th>Out</th>
+                                        <th>In</th>
+                                        <th>Out</th>
+                                    </tr>
                                 <?php else: ?>
-                                    <th><?= ar_sort_link('employee_id', 'Employee ID', $sort, $order, $mode) ?></th>
-                                    <th><?= ar_sort_link('full_name', 'Employee Name', $sort, $order, $mode) ?></th>
-                                    <th><?= ar_sort_link('timestamp', 'Date', $sort, $order, $mode) ?></th>
-                                    <th>Time In</th>
-                                    <th>Time Out</th>
-                                    <th>Status</th>
-                                    <th>Event</th>
+                                    <tr>
+                                        <th rowspan="2" style="vertical-align:bottom"><?= ar_sort_link('full_name', 'Employee Name', $sort, $order, $mode) ?></th>
+                                        <th rowspan="2" style="vertical-align:bottom"><?= ar_sort_link('timestamp', 'Date', $sort, $order, $mode) ?></th>
+                                        <th colspan="2" style="text-align:center; border-bottom:1px solid #d1d5db">Morning</th>
+                                        <th colspan="2" style="text-align:center; border-bottom:1px solid #d1d5db">Afternoon</th>
+                                        <?php if ($showEventCol): ?>
+                                            <th rowspan="2" style="vertical-align:bottom">Event</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                    <tr>
+                                        <th>In</th>
+                                        <th>Out</th>
+                                        <th>In</th>
+                                        <th>Out</th>
+                                    </tr>
                                 <?php endif; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($mode === 'event' && $roster): ?>
-                                <?php if (empty($roster['rows'])): ?>
-                                    <tr><td colspan="7" class="text-center text-gray-500 py-8">No employees or invalid event.</td></tr>
-                                <?php else: ?>
-                                    <?php foreach ($roster['rows'] as $r): ?>
+                            </thead>
+                            <tbody>
+                                <?php if ($mode === 'event' && $roster): ?>
+                                    <?php if (empty($roster['rows'])): ?>
+                                        <tr><td colspan="8" class="text-center text-gray-500 py-8">No employees or invalid event.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach ($roster['rows'] as $r): ?>
+                                            <?php
+                                            // derive window data
+                                            $morningIn = '—';
+                                            $morningOut = '—';
+                                            $afternoonIn = '—';
+                                            $afternoonOut = '—';
+                                            
+                                            $eid = $r['employee_id'];
+                                            $eDate = $r['date'];
+                                            
+                                            try {
+                                                $delRoster = SchemaColumnCache::attendancesHasDeletedAt() ? 'a.deleted_at IS NULL AND ' : '';
+                                                if (!isset($rosterPdo)) {
+                                                    $rosterPdo = (new Database())->connect();
+                                                }
+                                                $winQuery = $rosterPdo->prepare("
+                                                    SELECT a.window, a.timestamp
+                                                    FROM attendances AS a
+                                                    WHERE {$delRoster}a.employee_id = ?
+                                                      AND DATE(COALESCE(a.timestamp, a.created_at)) = ?
+                                                    ORDER BY a.timestamp ASC
+                                                ");
+                                                $winQuery->execute([$eid, $eDate]);
+                                                $winRows = $winQuery->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                                                
+                                                foreach ($winRows as $wr) {
+                                                    $wNorm = AttendanceAnalyticsService::normalizeLabel((string)($wr['window'] ?? ''));
+                                                    $wTs = (string)($wr['timestamp'] ?? '');
+                                                    if ($wTs === '') continue;
+                                                    try {
+                                                        $wDt = new DateTime($wTs, new DateTimeZone('Asia/Manila'));
+                                                        $wTime = $wDt->format('h:i:s A');
+                                                    } catch (Exception $ex) {
+                                                        $wTime = $wTs;
+                                                    }
+                                                    if ($wNorm === 'morning_in') $morningIn = $wTime;
+                                                    elseif ($wNorm === 'morning_out') $morningOut = $wTime;
+                                                    elseif ($wNorm === 'afternoon_in') $afternoonIn = $wTime;
+                                                    elseif ($wNorm === 'afternoon_out') $afternoonOut = $wTime;
+                                                }
+                                            } catch (Throwable $ex) {
+                                                if ($r['time_in'] !== '—') $morningIn = $r['time_in'];
+                                                if ($r['time_out'] !== '—') $afternoonOut = $r['time_out'];
+                                            }
+                                            ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($r['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($r['date'], ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($morningIn, ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($morningOut, ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($afternoonIn, ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($afternoonOut, ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td><?= htmlspecialchars($r['event_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                <?php elseif ($logsData && !empty($logsData['attendances'])): ?>
+                                    <?php
+                                    $grouped = [];
+                                    foreach ($logsData['attendances'] as $att) {
+                                        $a = is_object($att) ? json_decode(json_encode($att), true) : $att;
+                                        $ts = (string) ($a['attendance_time'] ?? '');
+                                        $datePart = '—';
+                                        if ($ts !== '') {
+                                            try {
+                                                $dt = new DateTime($ts, new DateTimeZone('Asia/Manila'));
+                                                $datePart = $dt->format('Y-m-d');
+                                            } catch (Exception $e) {}
+                                        }
+                                        $empId = (string) ($a['employee_id'] ?? '');
+                                        $fullName = (string) ($a['full_name'] ?? '');
+                                        $wl = (string) ($a['window_label'] ?? $a['window'] ?? '');
+                                        $norm = AttendanceAnalyticsService::normalizeLabel($wl);
+                                        $actName = (string) ($a['activity_name'] ?? '—');
+                                        
+                                        $key = $empId . '|' . $datePart;
+                                        if (!isset($grouped[$key])) {
+                                            $grouped[$key] = [
+                                                'employee_id' => $empId,
+                                                'full_name' => $fullName,
+                                                'date' => $datePart,
+                                                'morning_in' => '—',
+                                                'morning_out' => '—',
+                                                'afternoon_in' => '—',
+                                                'afternoon_out' => '—',
+                                                'activity_name' => $actName,
+                                            ];
+                                        }
+                                        
+                                        $timePart = '—';
+                                        if ($ts !== '') {
+                                            try {
+                                                $dt = new DateTime($ts, new DateTimeZone('Asia/Manila'));
+                                                $timePart = $dt->format('h:i:s A');
+                                            } catch (Exception $e) {
+                                                $timePart = $ts;
+                                            }
+                                        }
+                                        
+                                        if ($norm === 'morning_in') $grouped[$key]['morning_in'] = $timePart;
+                                        elseif ($norm === 'morning_out') $grouped[$key]['morning_out'] = $timePart;
+                                        elseif ($norm === 'afternoon_in') $grouped[$key]['afternoon_in'] = $timePart;
+                                        elseif ($norm === 'afternoon_out') $grouped[$key]['afternoon_out'] = $timePart;
+                                        elseif ($timePart !== '—' && $grouped[$key]['morning_in'] === '—') $grouped[$key]['morning_in'] = $timePart;
+                                        
+                                        if ($actName !== '—') $grouped[$key]['activity_name'] = $actName;
+                                    }
+                                    ?>
+                                    <?php foreach ($grouped as $row): ?>
                                         <tr>
-                                            <td><?= htmlspecialchars($r['employee_id'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['date'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['time_in'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['time_out'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8') ?></td>
-                                            <td><?= htmlspecialchars($r['event_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['full_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['date'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['morning_in'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['morning_out'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['afternoon_in'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><?= htmlspecialchars($row['afternoon_out'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <?php if ($showEventCol): ?>
+                                                <td><?= htmlspecialchars($row['activity_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                            <?php endif; ?>
                                         </tr>
                                     <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="<?= $totalCols ?>" class="text-center text-gray-500 py-8">No records found.</td></tr>
                                 <?php endif; ?>
-                            <?php elseif ($logsData && !empty($logsData['attendances'])): ?>
-                                <?php foreach ($logsData['attendances'] as $att): ?>
-                                    <?php
-                                    $a = is_object($att) ? json_decode(json_encode($att), true) : $att;
-                                    $ts = (string) ($a['attendance_time'] ?? '');
-                                    $datePart = '—';
-                                    $timePart = '—';
-                                    if ($ts !== '') {
-                                        try {
-                                            $dt = new DateTime($ts, new DateTimeZone('Asia/Manila'));
-                                            $datePart = $dt->format('Y-m-d');
-                                            $timePart = $dt->format('h:i:s A');
-                                        } catch (Exception $e) {
-                                            $timePart = $ts;
-                                        }
-                                    }
-                                    $wl = (string) ($a['window_label'] ?? $a['window'] ?? '');
-                                    $norm = AttendanceAnalyticsService::normalizeLabel($wl);
-                                    $timeIn = preg_match('/_in$/', $norm) ? $timePart : '—';
-                                    $timeOut = preg_match('/_out$/', $norm) ? $timePart : '—';
-                                    if ($timeIn === '—' && $timeOut === '—') {
-                                        $timeIn = $timePart;
-                                    }
-                                    $status = $wl !== '' ? $wl : 'Logged';
-                                    ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars((string) ($a['employee_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars((string) ($a['full_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars($datePart, ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars($timeIn, ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars($timeOut, ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td><?= htmlspecialchars((string) ($a['activity_name'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="7" class="text-center text-gray-500 py-8">No records found.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <?php

@@ -25,16 +25,15 @@ if ($searchQuery !== '') {
     $q = "%{$searchQuery}%";
 
     // 1) Residents (profiling-system).
-    // employees table may not exist (employees are owned by profiling-system), so we treat resident_id as the local key
-    // for employee_fingerprints when checking enrollment.
+    // Legacy rows may store prints in employee_fingerprints with employee_id equal to resident_id; enrollment for
+    // residents still uses resident_id (resident_fingerprints). Do not expose resident id as "Employee ID" in UI.
     $residentsSql = "
         SELECT
             r.id AS resident_id,
             r.first_name,
             r.middle_name,
             r.surname AS last_name,
-            NULL AS suffix,
-            CAST(r.id AS CHAR) AS linked_employee_id
+            NULL AS suffix
         FROM {$profilingResidentsTable} AS r
         WHERE
             (CONCAT(r.first_name, ' ', IFNULL(r.middle_name, ''), ' ', r.surname) LIKE :q)
@@ -69,12 +68,12 @@ if ($searchQuery !== '') {
 
     // 3) Determine enrollment status:
     // - Employees (officials): enrolled if bo.id exists in employee_fingerprints.
-    // - Residents: enrolled if resident_id exists in resident_fingerprints OR (if linked to local employee_id) that employee_id exists in employee_fingerprints.
+    // - Residents: enrolled if resident_id exists in resident_fingerprints OR (legacy) same id exists in employee_fingerprints.
 
     $residentEmployeeIds = [];
     foreach ($residentRows as $r) {
-        if (!empty($r['linked_employee_id'])) {
-            $residentEmployeeIds[] = (string) $r['linked_employee_id'];
+        if (!empty($r['resident_id'])) {
+            $residentEmployeeIds[] = (string) (int) $r['resident_id'];
         }
     }
 
@@ -126,13 +125,12 @@ if ($searchQuery !== '') {
 
     foreach ($residentRows as $r) {
         $rid = isset($r['resident_id']) ? (int) $r['resident_id'] : null;
-        $linkedEmployeeId = !empty($r['linked_employee_id']) ? (string) $r['linked_employee_id'] : null;
         $residentHasFingerprint = ($rid !== null && isset($enrolledResidentIds[(string) $rid]));
-        $employeeHasFingerprint = ($linkedEmployeeId !== null && isset($enrolledEmployeeIds[$linkedEmployeeId]));
+        $employeeHasFingerprint = ($rid !== null && isset($enrolledEmployeeIds[(string) $rid]));
         $people[] = [
             'type' => 'resident',
             'resident_id' => $rid,
-            'employee_id' => $linkedEmployeeId, // local employee_id if resident is an employee (used for status display only)
+            'employee_id' => null,
             'first_name' => $r['first_name'] ?? '',
             'middle_name' => $r['middle_name'] ?? '',
             'last_name' => $r['last_name'] ?? '',
@@ -272,11 +270,6 @@ if ($searchQuery !== '') {
                                         <p class="text-sm text-gray-600">
                                             <?php if (($type ?? '') === 'resident'): ?>
                                                 Resident ID: <?= htmlspecialchars((string)($person['resident_id'] ?? '')) ?>
-                                                <?php if (!empty($person['employee_id'])): ?>
-                                                    | Employee ID: <?= htmlspecialchars((string)$person['employee_id']) ?>
-                                                <?php else: ?>
-                                                    | Not an employee (resident enrollment)
-                                                <?php endif; ?>
                                             <?php else: ?>
                                                 Employee ID: <?= htmlspecialchars((string)($person['employee_id'] ?? '')) ?>
                                             <?php endif; ?>
